@@ -39,55 +39,68 @@ MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
 MAIL_RECIPIENT = os.environ.get("MAIL_RECIPIENT")
 
 
-def send_email_async(sender_name, sender_email, message_content, recipient_email):
-    """Background worker to send email notification via Gmail SMTP."""
-    mail_user = os.environ.get("MAIL_USERNAME")
-    mail_pass = os.environ.get("MAIL_PASSWORD")
+def send_email_core(sender_name, sender_email, message_content, recipient_email=None):
+    """Core function to send email via Gmail with SSL (465) and STARTTLS (587) fallback."""
+    mail_user = os.environ.get("MAIL_USERNAME", "").strip()
+    mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
+
     if not mail_user or not mail_pass:
-        print("[MAIL NOTICE] Email forwarding skipped: MAIL_USERNAME or MAIL_PASSWORD environment variables are not set.")
-        return
+        return False, "MAIL_USERNAME or MAIL_PASSWORD environment variables are not set."
 
-    to_email = recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user
+    to_email = (recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user).strip()
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"🔔 New Portfolio Message from {sender_name}"
-        msg["From"] = f"Portfolio Contact <{mail_user}>"
-        msg["To"] = to_email
-        if sender_email:
-            msg["Reply-To"] = sender_email
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"🔔 New Portfolio Message from {sender_name}"
+    msg["From"] = f"Portfolio <{mail_user}>"
+    msg["To"] = to_email
+    if sender_email:
+        msg["Reply-To"] = sender_email.strip()
 
-        html = f"""
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
-            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
-            <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
-                <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
-                <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
-            </div>
-            <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
-                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
-            </div>
-            <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
-                Sent automatically from your Ahmed Bosha Portfolio Web App
-            </p>
+    html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
+        <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
+        <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
+            <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
+            <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
         </div>
-        """
-        msg.attach(MIMEText(html, "html"))
+        <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
+            <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
+        </div>
+        <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
+            Sent automatically from your Ahmed Bosha Portfolio Web App
+        </p>
+    </div>
+    """
+    msg.attach(MIMEText(html, "html"))
 
-        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=10)
-        server.starttls()
+    # Try 1: Direct SSL on Port 465 (Most reliable on cloud hosts)
+    try:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=12)
         server.login(mail_user, mail_pass)
         server.send_message(msg)
         server.quit()
-        print(f"[MAIL SUCCESS] Notification forwarded to {to_email}")
-    except Exception as e:
-        print(f"[MAIL ERROR] Failed to forward message to Gmail: {e}")
+        print(f"[MAIL SUCCESS (SSL 465)] Notification forwarded to {to_email}")
+        return True, f"Sent via SSL to {to_email}"
+    except Exception as e_ssl:
+        # Try 2: STARTTLS on Port 587 fallback
+        try:
+            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=12)
+            server.starttls()
+            server.login(mail_user, mail_pass)
+            server.send_message(msg)
+            server.quit()
+            print(f"[MAIL SUCCESS (TLS 587)] Notification forwarded to {to_email}")
+            return True, f"Sent via TLS to {to_email}"
+        except Exception as e_tls:
+            err_msg = f"SSL Error: {e_ssl} | TLS Error: {e_tls}"
+            print(f"[MAIL ERROR] {err_msg}")
+            return False, err_msg
 
 
 def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
     """Fire and forget email notification thread."""
     thread = threading.Thread(
-        target=send_email_async,
+        target=send_email_core,
         args=(sender_name, sender_email, message_content, recipient_email),
     )
     thread.daemon = True
@@ -654,6 +667,29 @@ def admin_delete_message(msg_id):
     db.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
     db.commit()
     flash("Message deleted.", "info")
+    return redirect(url_for("admin_messages"))
+
+
+@app.route("/admin/test-email", methods=["POST"])
+@login_required
+def admin_test_email():
+    """Send a diagnostic test email to verify Gmail credentials."""
+    db = get_db()
+    settings = get_settings(db)
+    recipient = settings["email"] if settings and settings["email"] else None
+
+    success, result_msg = send_email_core(
+        sender_name="Portfolio System Test",
+        sender_email="test@portfolio.local",
+        message_content="🎉 Great news! Your Gmail forwarding is connected and working 100% perfectly with your Portfolio Web App!",
+        recipient_email=recipient,
+    )
+
+    if success:
+        flash(f"✅ Success! {result_msg}", "success")
+    else:
+        flash(f"❌ Gmail Error: {result_msg}", "danger")
+
     return redirect(url_for("admin_messages"))
 
 

@@ -24,6 +24,11 @@
                 <h1 class="admin-header__title">Messages</h1>
                 <p class="admin-header__subtitle">{{ messages | length }} message{{ 's' if messages | length != 1 }} total</p>
             </div>
+            <div>
+                <form method="POST" action="{{ url_for('admin_test_email') }}" style="display:inline;">
+                    <button type="submit" class="btn btn--sm btn--primary">⚡ Test Gmail Connection</button>
+                </form>
+            </div>
         </div>
 
         {% if messages %}
