@@ -32,22 +32,79 @@ UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
 
 # Mail configuration for Gmail forward
+import json
+import urllib.request
+import urllib.error
+
+# Mail configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
 MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
 MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
 MAIL_RECIPIENT = os.environ.get("MAIL_RECIPIENT")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+
+
+def send_via_resend(api_key, to_email, sender_name, sender_email, message_content):
+    """Send email over HTTPS via Resend API (Never blocked by cloud firewalls)."""
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json",
+        "User-Agent": "Portfolio-App/1.0",
+    }
+    payload = {
+        "from": "Portfolio Contact <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": f"🔔 New Portfolio Message from {sender_name}",
+        "reply_to": sender_email if sender_email else None,
+        "html": f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
+            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
+            <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
+                <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
+                <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
+            </div>
+            <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
+                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
+            </div>
+            <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
+                Sent automatically from your Ahmed Bosha Portfolio Web App
+            </p>
+        </div>
+        """,
+    }
+
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as response:
+            res_body = response.read().decode("utf-8")
+            print(f"[RESEND SUCCESS] Forwarded to {to_email}: {res_body}")
+            return True, f"Sent via Resend API to {to_email}"
+    except urllib.error.HTTPError as e:
+        err = e.read().decode("utf-8")
+        print(f"[RESEND HTTP ERROR] {err}")
+        return False, f"Resend API Error: {err}"
+    except Exception as e:
+        print(f"[RESEND ERROR] {e}")
+        return False, f"Resend Connection Error: {e}"
 
 
 def send_email_core(sender_name, sender_email, message_content, recipient_email=None):
-    """Core function to send email via Gmail with SSL (465) and STARTTLS (587) fallback."""
+    """Core function to send email via HTTPS API (Resend) or Gmail SMTP fallback."""
+    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
     mail_user = os.environ.get("MAIL_USERNAME", "").strip()
     mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
 
-    if not mail_user or not mail_pass:
-        return False, "MAIL_USERNAME or MAIL_PASSWORD environment variables are not set."
+    to_email = (recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
 
-    to_email = (recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user).strip()
+    # Priority 1: Resend HTTPS API (Works 100% on Render Free without port blocking)
+    if resend_key:
+        return send_via_resend(resend_key, to_email, sender_name, sender_email, message_content)
+
+    if not mail_user or not mail_pass:
+        return False, "Neither RESEND_API_KEY nor MAIL_USERNAME/PASSWORD are configured in environment."
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"🔔 New Portfolio Message from {sender_name}"
@@ -73,18 +130,17 @@ def send_email_core(sender_name, sender_email, message_content, recipient_email=
     """
     msg.attach(MIMEText(html, "html"))
 
-    # Try 1: Direct SSL on Port 465 (Most reliable on cloud hosts)
+    # Direct SSL on Port 465
     try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=12)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
         server.login(mail_user, mail_pass)
         server.send_message(msg)
         server.quit()
         print(f"[MAIL SUCCESS (SSL 465)] Notification forwarded to {to_email}")
         return True, f"Sent via SSL to {to_email}"
     except Exception as e_ssl:
-        # Try 2: STARTTLS on Port 587 fallback
         try:
-            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=12)
+            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
             server.starttls()
             server.login(mail_user, mail_pass)
             server.send_message(msg)
@@ -92,7 +148,7 @@ def send_email_core(sender_name, sender_email, message_content, recipient_email=
             print(f"[MAIL SUCCESS (TLS 587)] Notification forwarded to {to_email}")
             return True, f"Sent via TLS to {to_email}"
         except Exception as e_tls:
-            err_msg = f"SSL Error: {e_ssl} | TLS Error: {e_tls}"
+            err_msg = f"Network is blocking SMTP ports (25/465/587) on Render Free. Please use RESEND_API_KEY. Details: {e_ssl}"
             print(f"[MAIL ERROR] {err_msg}")
             return False, err_msg
 
