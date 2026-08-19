@@ -268,7 +268,7 @@
             <article class="project-card reveal"
                      data-tags="{{ p.tech_stack | lower }} {{ p.title | lower }}"
                      style="--delay: {{ loop.index0 * 0.12 }}s;">
-                {# Optional Project Image with Window Frame Mockup #}
+                {# Project Header: Image Mockup or Terminal Code Banner #}
                 {% if p.image %}
                 <div class="project-card__mockup" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details &amp; full screenshots">
                     <div class="project-card__mockup-bar">
@@ -285,6 +285,21 @@
                         <div class="project-card__img-overlay">
                             <span class="project-card__quick-view">🔍 Quick View &amp; Details</span>
                         </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="project-card__no-img-banner" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details">
+                    <div class="no-img-banner__top">
+                        <div class="mockup-dots">
+                            <span class="mockup-dot mockup-dot--red"></span>
+                            <span class="mockup-dot mockup-dot--yellow"></span>
+                            <span class="mockup-dot mockup-dot--green"></span>
+                        </div>
+                        <span class="no-img-banner__tag">CORE REPO</span>
+                    </div>
+                    <div class="no-img-banner__code">
+                        <code>$ git clone {{ p.title | lower }}.git</code><br>
+                        <code>$ python main.py --run</code>
                     </div>
                 </div>
                 {% endif %}
@@ -811,12 +826,13 @@ function openProjectModal(index) {
                         <span class="mockup-dot mockup-dot--yellow"></span>
                         <span class="mockup-dot mockup-dot--green"></span>
                     </div>
-                    <span class="modal-window-url">https://github.com/AhmedBosha/${p.title.replace(/\s+/g, '-').toLowerCase()}</span>
-                    <div style="width: 40px;"></div>
+                    <span class="modal-window-url">${p.title}.app</span>
                 </div>
-                <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')">
+                <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')" title="Click to view full resolution image">
                     <img src="${p.image}" alt="${p.title}" class="project-modal__img">
-                    <span class="project-modal__zoom-badge">🔍 Click to Open Full Image</span>
+                </div>
+                <div class="modal-zoom-hint-bar" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')">
+                    🔍 Tap image to open full resolution (100%)
                 </div>
             </div>
         `;
