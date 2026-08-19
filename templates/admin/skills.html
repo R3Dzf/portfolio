@@ -2,31 +2,11 @@
 {% block title %}Skills — Admin{% endblock %}
 
 {% block body %}
-<nav class="admin-nav">
-    <div class="container admin-nav__inner">
-        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
-        <div class="admin-nav__actions">
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
-            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--primary">Skills</a>
-            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
-            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
-            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
-            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
-            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
-            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
-                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
-            </a>
-            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
-            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
-            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
-        </div>
-    </div>
-</nav>
+{% set active_tab = 'skills' %}
+{% include "admin/nav.html" %}
 
 <main class="admin-main">
     <div class="container" style="max-width:960px;">
-        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
-
         <div class="admin-header">
             <div>
                 <h1 class="admin-header__title">Technical Skills &amp; Stack</h1>
@@ -36,16 +16,16 @@
 
         <!-- Add new skill form -->
         <div class="form-card" style="margin-bottom: var(--space-lg);">
-            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add New Skill</h3>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.15rem; font-weight: 700;">+ Add New Skill</h3>
             <form method="POST" action="{{ url_for('admin_add_skill') }}">
-                <div class="skill-add-grid">
-                    <div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
                         <label class="form-label" for="add_name">Skill Name <span class="required">*</span></label>
                         <input class="form-input" type="text" id="add_name" name="name" placeholder="e.g. Reverse Engineering" required>
                     </div>
-                    <div>
+                    <div class="form-group" style="flex: 2;">
                         <label class="form-label" for="add_category">Category <span class="required">*</span></label>
-                        <input class="form-input" type="text" id="add_category" name="category" placeholder="e.g. Security & Systems" list="category_suggestions" required>
+                        <input class="form-input" type="text" id="add_category" name="category" placeholder="e.g. Security &amp; Systems" list="category_suggestions" required>
                         <datalist id="category_suggestions">
                             <option value="Programming & Backend">
                             <option value="Security & Systems">
@@ -53,76 +33,92 @@
                             <option value="Core Engineering">
                         </datalist>
                     </div>
-                    <div>
-                        <label class="form-label" for="add_tag">Tag / Level (Optional)</label>
-                        <input class="form-input" type="text" id="add_tag" name="level_tag" placeholder="e.g. Advanced / Core / Tool">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="add_tag">Tag / Badge (Optional)</label>
+                        <input class="form-input" type="text" id="add_tag" name="level_tag" placeholder="e.g. Advanced / Core / Framework">
                     </div>
-                    <div>
-                        <label class="form-label" for="add_icon">Icon / Emoji</label>
-                        <input class="form-input" type="text" id="add_icon" name="icon" placeholder="e.g. ⚡ or 🐍" style="text-align: center;">
-                    </div>
-                    <div>
-                        <label class="form-label" for="add_order">Order</label>
-                        <input class="form-input" type="number" id="add_order" name="sort_order" value="{{ (skills | length) + 1 }}" style="width: 70px;">
-                    </div>
-                    <div style="align-self: end;">
-                        <button type="submit" class="btn btn--primary" style="height: 42px;">Add Skill</button>
+                    <div class="form-group" style="display: grid; grid-template-columns: 80px 80px; gap: 8px;">
+                        <div>
+                            <label class="form-label" for="add_icon">Emoji</label>
+                            <input class="form-input" type="text" id="add_icon" name="icon" placeholder="⚡">
+                        </div>
+                        <div>
+                            <label class="form-label" for="add_order">Order</label>
+                            <input class="form-input" type="number" id="add_order" name="sort_order" value="{{ (skills | length) + 1 }}">
+                        </div>
                     </div>
                 </div>
+                <button type="submit" class="btn btn--primary">Add Skill</button>
             </form>
         </div>
 
-        <!-- Existing skills table with isolated forms -->
+        <!-- Existing Skills Item Cards -->
         {% if skills %}
-        <div class="table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th style="width: 45px;">#</th>
-                        <th style="width: 60px;">Icon</th>
-                        <th>Skill Name</th>
-                        <th>Category</th>
-                        <th>Tag / Badge</th>
-                        <th style="width: 65px;">Order</th>
-                        <th style="width: 140px; text-align: right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for skill in skills %}
-                    <tr>
-                        <td class="cell-id">{{ loop.index }}</td>
-                        <td style="font-size: 1.25rem; text-align: center;">
-                            {{ skill.icon or '•' }}
-                        </td>
-                        <td>
-                            <form id="edit-form-{{ skill.id }}" method="POST" action="{{ url_for('admin_edit_skill', skill_id=skill.id) }}">
-                                <input class="form-input form-input--sm" type="text" name="name" value="{{ skill.name }}" required>
-                        </td>
-                        <td>
-                                <input class="form-input form-input--sm" type="text" name="category" value="{{ skill.category }}" list="category_suggestions" required>
-                        </td>
-                        <td>
-                                <input class="form-input form-input--sm" type="text" name="level_tag" value="{{ skill.level_tag or '' }}" placeholder="None">
-                        </td>
-                        <td>
-                                <input class="form-input form-input--sm" type="number" name="sort_order" value="{{ skill.sort_order }}" style="width: 55px;">
-                                <input type="hidden" name="icon" value="{{ skill.icon or '' }}">
-                            </form>
-                        </td>
-                        <td>
-                            <div class="cell-actions">
-                                <button type="submit" form="edit-form-{{ skill.id }}" class="btn btn--sm btn--outline">Save</button>
-                                <form method="POST" action="{{ url_for('admin_delete_skill', skill_id=skill.id) }}"
-                                      style="display:inline;" onsubmit="return confirm('Delete &quot;{{ skill.name }}&quot;?');">
-                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
-                                </form>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">Existing Skills</h3>
+            {% for skill in skills %}
+            <div class="admin-item-card" id="card-skill-{{ skill.id }}">
+                <div class="admin-item-card__header">
+                    <div class="admin-item-card__info">
+                        <div class="admin-item-card__icon">{{ skill.icon or '⚡' }}</div>
+                        <div>
+                            <h4 class="admin-item-card__title">{{ skill.name }}</h4>
+                            <div class="admin-item-card__meta">
+                                <span>📁 {{ skill.category }}</span>
+                                {% if skill.level_tag %}<span class="link-badge link-badge--blue">{{ skill.level_tag }}</span>{% endif %}
+                                <span class="admin-item-card__meta-tag">Order: {{ skill.sort_order }}</span>
                             </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </div>
+                    <div class="admin-item-card__actions">
+                        <button type="button" class="btn btn--sm btn--outline" onclick="toggleEdit('edit-skill-{{ skill.id }}')">
+                            ✏️ Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('admin_delete_skill', skill_id=skill.id) }}"
+                              style="display:inline;" onsubmit="return confirm('Delete skill &quot;{{ skill.name }}&quot;?');">
+                            <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inline Edit Drawer -->
+                <div class="admin-item-card__edit-form" id="edit-skill-{{ skill.id }}">
+                    <form method="POST" action="{{ url_for('admin_edit_skill', skill_id=skill.id) }}">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label class="form-label">Skill Name <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="name" value="{{ skill.name }}" required>
+                            </div>
+                            <div class="form-group" style="flex: 2;">
+                                <label class="form-label">Category <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="category" value="{{ skill.category }}" list="category_suggestions" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Tag / Badge</label>
+                                <input class="form-input" type="text" name="level_tag" value="{{ skill.level_tag or '' }}">
+                            </div>
+                            <div class="form-group" style="display: grid; grid-template-columns: 80px 80px; gap: 8px;">
+                                <div>
+                                    <label class="form-label">Emoji</label>
+                                    <input class="form-input" type="text" name="icon" value="{{ skill.icon or '' }}">
+                                </div>
+                                <div>
+                                    <label class="form-label">Order</label>
+                                    <input class="form-input" type="number" name="sort_order" value="{{ skill.sort_order }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit" class="btn btn--primary btn--sm">Save Changes</button>
+                            <button type="button" class="btn btn--outline btn--sm" onclick="toggleEdit('edit-skill-{{ skill.id }}')">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
         <div class="empty-state">
             <p>No skills added yet. Add your skills above!</p>
@@ -130,4 +126,11 @@
         {% endif %}
     </div>
 </main>
+
+<script>
+function toggleEdit(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('open');
+}
+</script>
 {% endblock %}

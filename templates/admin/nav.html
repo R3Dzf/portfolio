@@ -1,0 +1,50 @@
+<!-- ===== Reusable Modern Admin Navigation ===== -->
+<nav class="admin-nav">
+    <div class="container">
+        <!-- Top Bar: Brand, Site Link, Messages & Logout -->
+        <div class="admin-nav__top">
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">
+                Ahmed<span class="accent">Bosha</span> <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--clr-surface-2); color: var(--clr-text-muted); border: 1px solid var(--clr-border);">CMS</span>
+            </a>
+            <div class="admin-nav__top-actions">
+                <a href="{{ url_for('admin_messages') }}" class="btn btn--sm {% if active_tab == 'messages' %}btn--primary{% else %}btn--outline{% endif %}">
+                    📬 Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+                </a>
+                <a href="{{ url_for('index') }}" target="_blank" rel="noopener" class="btn btn--sm btn--dark" title="View Public Portfolio">
+                    ↗ View Site
+                </a>
+                <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger" title="Logout">
+                    Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Bottom Bar: Horizontal Segmented Tab Links -->
+        <div class="admin-tabs">
+            <a href="{{ url_for('admin_dashboard') }}" class="admin-tab {% if active_tab == 'projects' %}active{% endif %}">
+                🚀 Projects
+            </a>
+            <a href="{{ url_for('admin_skills') }}" class="admin-tab {% if active_tab == 'skills' %}active{% endif %}">
+                ⚡ Skills
+            </a>
+            <a href="{{ url_for('admin_experience') }}" class="admin-tab {% if active_tab == 'experience' %}active{% endif %}">
+                💼 Experience
+            </a>
+            <a href="{{ url_for('admin_education') }}" class="admin-tab {% if active_tab == 'education' %}active{% endif %}">
+                🎓 Education
+            </a>
+            <a href="{{ url_for('admin_services') }}" class="admin-tab {% if active_tab == 'services' %}active{% endif %}">
+                🛠️ Services
+            </a>
+            <a href="{{ url_for('admin_achievements') }}" class="admin-tab {% if active_tab == 'achievements' %}active{% endif %}">
+                🏆 Achievements
+            </a>
+            <a href="{{ url_for('admin_testimonials') }}" class="admin-tab {% if active_tab == 'testimonials' %}active{% endif %}">
+                💬 Testimonials
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="admin-tab {% if active_tab == 'settings' %}active{% endif %}">
+                ⚙️ Settings
+            </a>
+        </div>
+    </div>
+</nav>

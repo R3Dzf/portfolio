@@ -2,46 +2,26 @@
 {% block title %}Work Experience &amp; Training — Admin{% endblock %}
 
 {% block body %}
-<nav class="admin-nav">
-    <div class="container admin-nav__inner">
-        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
-        <div class="admin-nav__actions">
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
-            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
-            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--primary">Experience</a>
-            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
-            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
-            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
-            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
-            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
-                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
-            </a>
-            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
-            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
-            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
-        </div>
-    </div>
-</nav>
+{% set active_tab = 'experience' %}
+{% include "admin/nav.html" %}
 
 <main class="admin-main">
     <div class="container" style="max-width:960px;">
-        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
-
         <div class="admin-header">
             <div>
                 <h1 class="admin-header__title">Work Experience &amp; Practical Training</h1>
-                <p class="admin-header__subtitle">{{ experiences_list | length }} experience timeline record{{ 's' if experiences_list | length != 1 }}</p>
+                <p class="admin-header__subtitle">{{ experiences_list | length }} timeline record{{ 's' if experiences_list | length != 1 }}</p>
             </div>
         </div>
 
         <!-- Add Experience Form -->
         <div class="form-card" style="margin-bottom: var(--space-lg);">
-            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Work Experience / Training</h3>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.15rem; font-weight: 700;">+ Add Work Experience / Training</h3>
             <form method="POST" action="{{ url_for('admin_add_experience') }}">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="role_title">Role / Position Title <span class="required">*</span></label>
-                        <input class="form-input" type="text" id="role_title" name="title" placeholder="e.g. Reverse Engineering & Security Researcher" required>
+                        <input class="form-input" type="text" id="role_title" name="title" placeholder="e.g. Reverse Engineering &amp; Security Researcher" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="company">Company / Organization / Institute <span class="required">*</span></label>
@@ -84,55 +64,87 @@
             </form>
         </div>
 
-        <!-- Existing Experience Timeline Records -->
+        <!-- Existing Experience Item Cards -->
         {% if experiences_list %}
-        <div class="table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th style="width: 45px;">#</th>
-                        <th>Role &amp; Organization</th>
-                        <th>Period</th>
-                        <th>Description</th>
-                        <th style="width: 140px; text-align: right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for exp in experiences_list %}
-                    <tr>
-                        <td class="cell-id">{{ loop.index }}</td>
-                        <td>
-                            <form id="edit-exp-{{ exp.id }}" method="POST" action="{{ url_for('admin_edit_experience', item_id=exp.id) }}">
-                                <input class="form-input form-input--sm" type="text" name="title" value="{{ exp.title }}" required style="margin-bottom: 4px; font-weight: 600;">
-                                <input class="form-input form-input--sm" type="text" name="company" value="{{ exp.company }}" placeholder="Company" required style="margin-bottom: 4px;">
-                                <input class="form-input form-input--sm" type="text" name="location" value="{{ exp.location or '' }}" placeholder="Location">
-                        </td>
-                        <td>
-                                <input class="form-input form-input--sm" type="text" name="start_date" value="{{ exp.start_date }}" placeholder="Start" style="margin-bottom: 4px; width: 90px;">
-                                <input class="form-input form-input--sm" type="text" name="end_date" value="{{ exp.end_date or '' }}" placeholder="End" style="margin-bottom: 4px; width: 90px;">
-                                <label style="display:block; font-size:0.75rem; margin-top:4px;">
-                                    <input type="checkbox" name="is_current" value="1" {% if exp.is_current %}checked{% endif %}> Current
-                                </label>
-                                <input type="hidden" name="sort_order" value="{{ exp.sort_order }}">
-                        </td>
-                        <td>
-                                <textarea class="form-input form-input--sm" name="description" rows="3" required>{{ exp.description }}</textarea>
-                            </form>
-                        </td>
-                        <td>
-                            <div class="cell-actions">
-                                <button type="submit" form="edit-exp-{{ exp.id }}" class="btn btn--sm btn--outline">Save</button>
-                                <form method="POST" action="{{ url_for('admin_delete_experience', item_id=exp.id) }}"
-                                      style="display:inline;" onsubmit="return confirm('Delete this experience entry?');">
-                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
-                                </form>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">Existing Records</h3>
+            {% for exp in experiences_list %}
+            <div class="admin-item-card" id="card-exp-{{ exp.id }}">
+                <div class="admin-item-card__header">
+                    <div class="admin-item-card__info">
+                        <div class="admin-item-card__icon">💼</div>
+                        <div>
+                            <h4 class="admin-item-card__title">{{ exp.title }}</h4>
+                            <div class="admin-item-card__meta">
+                                <span>🏢 {{ exp.company }}</span>
+                                {% if exp.location %}<span class="admin-item-card__meta-tag">📍 {{ exp.location }}</span>{% endif %}
+                                <span class="admin-item-card__meta-tag">📅 {{ exp.start_date }} — {{ exp.end_date if exp.end_date else 'Present' }}</span>
+                                {% if exp.is_current %}<span class="link-badge link-badge--gold">Current Role</span>{% endif %}
                             </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </div>
+                    <div class="admin-item-card__actions">
+                        <button type="button" class="btn btn--sm btn--outline" onclick="toggleEdit('edit-exp-{{ exp.id }}')">
+                            ✏️ Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('admin_delete_experience', item_id=exp.id) }}"
+                              style="display:inline;" onsubmit="return confirm('Delete this experience entry?');">
+                            <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+
+                <p class="admin-item-card__desc">{{ exp.description }}</p>
+
+                <!-- Inline Edit Drawer -->
+                <div class="admin-item-card__edit-form" id="edit-exp-{{ exp.id }}">
+                    <form method="POST" action="{{ url_for('admin_edit_experience', item_id=exp.id) }}">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Role Title <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="title" value="{{ exp.title }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Company / Institute <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="company" value="{{ exp.company }}" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Location</label>
+                                <input class="form-input" type="text" name="location" value="{{ exp.location or '' }}">
+                            </div>
+                            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr 60px; gap: 8px; align-items: end;">
+                                <div>
+                                    <label class="form-label">Start</label>
+                                    <input class="form-input" type="text" name="start_date" value="{{ exp.start_date }}" required>
+                                </div>
+                                <div>
+                                    <label class="form-label">End</label>
+                                    <input class="form-input" type="text" name="end_date" value="{{ exp.end_date or '' }}">
+                                </div>
+                                <div style="padding-bottom: 8px;">
+                                    <label style="font-size: 0.82rem; cursor: pointer;">
+                                        <input type="checkbox" name="is_current" value="1" {% if exp.is_current %}checked{% endif %}> Current
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="form-label">Order</label>
+                                    <input class="form-input" type="number" name="sort_order" value="{{ exp.sort_order }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description <span class="required">*</span></label>
+                            <textarea class="form-input form-textarea" name="description" rows="3" required>{{ exp.description }}</textarea>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit" class="btn btn--primary btn--sm">Save Changes</button>
+                            <button type="button" class="btn btn--outline btn--sm" onclick="toggleEdit('edit-exp-{{ exp.id }}')">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
         <div class="empty-state">
             <p>No work experience or training records added yet. Add your first experience above!</p>
@@ -140,4 +152,11 @@
         {% endif %}
     </div>
 </main>
+
+<script>
+function toggleEdit(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('open');
+}
+</script>
 {% endblock %}

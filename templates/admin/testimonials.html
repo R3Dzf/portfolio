@@ -2,31 +2,11 @@
 {% block title %}Testimonials &amp; Recommendations — Admin{% endblock %}
 
 {% block body %}
-<nav class="admin-nav">
-    <div class="container admin-nav__inner">
-        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
-        <div class="admin-nav__actions">
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
-            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
-            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
-            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
-            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
-            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
-            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--primary">Testimonials</a>
-            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
-                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
-            </a>
-            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
-            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
-            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
-        </div>
-    </div>
-</nav>
+{% set active_tab = 'testimonials' %}
+{% include "admin/nav.html" %}
 
 <main class="admin-main">
     <div class="container" style="max-width:960px;">
-        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
-
         <div class="admin-header">
             <div>
                 <h1 class="admin-header__title">Testimonials &amp; Endorsements</h1>
@@ -36,23 +16,23 @@
 
         <!-- Add Testimonial Form -->
         <div class="form-card" style="margin-bottom: var(--space-lg);">
-            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Testimonial / Recommendation</h3>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.15rem; font-weight: 700;">+ Add Testimonial / Recommendation</h3>
             <form method="POST" action="{{ url_for('admin_add_testimonial') }}">
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" for="c_name">Person / Client / Mentor Name <span class="required">*</span></label>
+                        <label class="form-label" for="c_name">Person / Mentor / Client Name <span class="required">*</span></label>
                         <input class="form-input" type="text" id="c_name" name="client_name" placeholder="e.g. Eng. Mohamed Tarek" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="c_role">Role / Title / Company <span class="required">*</span></label>
+                        <label class="form-label" for="c_role">Role / Title / Organization <span class="required">*</span></label>
                         <input class="form-input" type="text" id="c_role" name="client_role" placeholder="e.g. Senior Software Architect &amp; Mentor" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group" style="flex: 3;">
-                        <label class="form-label" for="t_quote">Quote / Recommendation Text <span class="required">*</span></label>
-                        <textarea class="form-input form-textarea" id="t_quote" name="quote" rows="3" placeholder="Paste the feedback or testimonial quote..." required></textarea>
+                        <label class="form-label" for="t_quote">Recommendation Quote <span class="required">*</span></label>
+                        <textarea class="form-input form-textarea" id="t_quote" name="quote" rows="3" placeholder="Paste the feedback or endorsement text..." required></textarea>
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label class="form-label" for="t_ord">Order</label>
@@ -64,51 +44,73 @@
             </form>
         </div>
 
-        <!-- Existing Testimonials Records -->
+        <!-- Existing Testimonials Item Cards -->
         {% if testimonials_list %}
-        <div class="table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th style="width: 45px;">#</th>
-                        <th>Name &amp; Role</th>
-                        <th>Testimonial Quote</th>
-                        <th style="width: 140px; text-align: right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for t in testimonials_list %}
-                    <tr>
-                        <td class="cell-id">{{ loop.index }}</td>
-                        <td>
-                            <form id="edit-t-{{ t.id }}" method="POST" action="{{ url_for('admin_edit_testimonial', item_id=t.id) }}">
-                                <input class="form-input form-input--sm" type="text" name="client_name" value="{{ t.client_name }}" required style="font-weight: 600; margin-bottom: 4px;">
-                                <input class="form-input form-input--sm" type="text" name="client_role" value="{{ t.client_role }}" required placeholder="Role">
-                                <input type="hidden" name="sort_order" value="{{ t.sort_order }}">
-                        </td>
-                        <td>
-                                <textarea class="form-input form-input--sm" name="quote" rows="3" required>{{ t.quote }}</textarea>
-                            </form>
-                        </td>
-                        <td>
-                            <div class="cell-actions">
-                                <button type="submit" form="edit-t-{{ t.id }}" class="btn btn--sm btn--outline">Save</button>
-                                <form method="POST" action="{{ url_for('admin_delete_testimonial', item_id=t.id) }}"
-                                      style="display:inline;" onsubmit="return confirm('Delete this testimonial?');">
-                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
-                                </form>
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">Existing Records</h3>
+            {% for t in testimonials_list %}
+            <div class="admin-item-card" id="card-t-{{ t.id }}">
+                <div class="admin-item-card__header">
+                    <div class="admin-item-card__info">
+                        <div class="admin-item-card__icon" style="background: var(--clr-primary); color: #fff; font-weight: 800;">
+                            {{ t.client_name[:2].upper() }}
+                        </div>
+                        <div>
+                            <h4 class="admin-item-card__title">{{ t.client_name }}</h4>
+                            <div class="admin-item-card__meta">
+                                <span>{{ t.client_role }}</span>
                             </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </div>
+                    <div class="admin-item-card__actions">
+                        <button type="button" class="btn btn--sm btn--outline" onclick="toggleEdit('edit-t-{{ t.id }}')">
+                            ✏️ Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('admin_delete_testimonial', item_id=t.id) }}"
+                              style="display:inline;" onsubmit="return confirm('Delete this testimonial?');">
+                            <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+
+                <p class="admin-item-card__desc" style="font-style: italic;">“{{ t.quote }}”</p>
+
+                <!-- Inline Edit Drawer -->
+                <div class="admin-item-card__edit-form" id="edit-t-{{ t.id }}">
+                    <form method="POST" action="{{ url_for('admin_edit_testimonial', item_id=t.id) }}">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Name <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="client_name" value="{{ t.client_name }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Role &amp; Organization <span class="required">*</span></label>
+                                <input class="form-input" type="text" name="client_role" value="{{ t.client_role }}" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quote <span class="required">*</span></label>
+                            <textarea class="form-input form-textarea" name="quote" rows="3" required>{{ t.quote }}</textarea>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit" class="btn btn--primary btn--sm">Save Changes</button>
+                            <button type="button" class="btn btn--outline btn--sm" onclick="toggleEdit('edit-t-{{ t.id }}')">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
         <div class="empty-state">
-            <p>No testimonials added yet. Display endorsements from instructors, mentors, or clients!</p>
+            <p>No testimonials added yet. Showcase recommendations from mentors or clients above!</p>
         </div>
         {% endif %}
     </div>
 </main>
+
+<script>
+function toggleEdit(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('open');
+}
+</script>
 {% endblock %}
