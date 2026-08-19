@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — Ahmed Bosha{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+    <form class="auth-card" method="POST" action="{{ url_for('admin_login') }}">
+        <h1 class="auth-card__title">Admin Login</h1>
+        <p class="auth-card__subtitle">Portfolio CMS</p>
+
+        <label class="form-label" for="username">Username</label>
+        <input class="form-input" type="text" id="username" name="username"
+               placeholder="Enter username" required autofocus>
+
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" type="password" id="password" name="password"
+               placeholder="Enter password" required>
+
+        <button type="submit" class="btn btn--primary btn--block">Log In</button>
+
+        <a href="{{ url_for('index') }}" class="auth-card__back">&larr; Back to portfolio</a>
+    </form>
+</div>
+{% endblock %}

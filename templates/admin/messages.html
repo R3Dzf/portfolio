@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Messages — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--primary">Messages</a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:760px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Messages</h1>
+                <p class="admin-header__subtitle">{{ messages | length }} message{{ 's' if messages | length != 1 }} total</p>
+            </div>
+        </div>
+
+        {% if messages %}
+            {% for msg in messages %}
+            <div class="message-card {% if not msg.is_read %}message-card--unread{% endif %}">
+                <div class="message-card__header">
+                    <div>
+                        <span class="message-card__sender">{{ msg.sender_name }}</span>
+                        {% if msg.sender_email %}
+                        <br><a href="mailto:{{ msg.sender_email }}" class="message-card__email">{{ msg.sender_email }}</a>
+                        {% endif %}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:var(--space-sm);">
+                        <span class="message-card__date">{{ msg.created_at }}</span>
+                        <form method="POST" action="{{ url_for('admin_delete_message', msg_id=msg.id) }}"
+                              style="display:inline;" onsubmit="return confirm('Delete this message?');">
+                            <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                <p class="message-card__body">{{ msg.message }}</p>
+                {% if msg.sender_email %}
+                <a href="mailto:{{ msg.sender_email }}?subject=Re: Portfolio Contact" class="btn btn--sm btn--outline">Reply</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <p>No messages yet. They'll appear here when visitors contact you through the portfolio.</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

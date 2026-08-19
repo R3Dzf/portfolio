@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if project else "Add" }} Project — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:680px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="form-card">
+            <h2 class="form-card__title">{{ "Edit Project" if project else "Add New Project" }}</h2>
+
+            <form method="POST" enctype="multipart/form-data"
+                  action="{{ url_for('admin_edit_project', project_id=project.id) if project else url_for('admin_add_project') }}">
+
+                <label class="form-label" for="title">Title <span class="required">*</span></label>
+                <input class="form-input" type="text" id="title" name="title"
+                       value="{{ project.title if project else '' }}"
+                       placeholder="e.g. My Awesome Project" required>
+
+                <label class="form-label" for="description">Description <span class="required">*</span></label>
+                <textarea class="form-input form-textarea" id="description" name="description"
+                          rows="4" placeholder="A brief description..."
+                          required>{{ project.description if project else '' }}</textarea>
+
+                <label class="form-label" for="tech_stack">Tech Stack <span class="required">*</span></label>
+                <input class="form-input" type="text" id="tech_stack" name="tech_stack"
+                       value="{{ project.tech_stack if project else '' }}"
+                       placeholder="e.g. Python, Flask, SQLite" required>
+                <p class="form-hint">Comma-separated list of technologies.</p>
+
+                <!-- Project Image -->
+                <hr class="form-divider">
+                <p class="form-section-label">Project Image</p>
+
+                {% if project and project.image %}
+                <div class="photo-preview">
+                    <img src="{{ url_for('static', filename='uploads/' + project.image) }}"
+                         alt="Current image" class="photo-preview__img" style="border-radius:var(--radius-sm); width:120px; height:80px;">
+                    <div class="photo-preview__actions">
+                        <label class="btn btn--sm btn--outline">
+                            Change Image
+                            <input type="file" name="image" accept="image/*" style="display:none;">
+                        </label>
+                        <label class="btn btn--sm btn--danger">
+                            <input type="checkbox" name="remove_image" value="1" style="display:none;"
+                                   onchange="if(this.checked && !confirm('Remove image?')) this.checked=false;">
+                            Remove
+                        </label>
+                    </div>
+                </div>
+                {% else %}
+                <div class="photo-upload">
+                    <label class="photo-upload__label">
+                        <span class="photo-upload__icon">+</span>
+                        <span class="photo-upload__text">Click to upload a screenshot</span>
+                        <input type="file" name="image" accept="image/*" style="display:none;"
+                               onchange="this.parentElement.querySelector('.photo-upload__text').textContent = 'Selected: ' + this.files[0].name">
+                    </label>
+                    <p class="form-hint">PNG, JPG, GIF, or WebP. Max 4 MB.</p>
+                </div>
+                {% endif %}
+
+                <hr class="form-divider">
+                <p class="form-section-label">Optional Links</p>
+
+                <label class="form-label" for="github_link">GitHub URL</label>
+                <input class="form-input" type="url" id="github_link" name="github_link"
+                       value="{{ project.github_link if project and project.github_link else '' }}"
+                       placeholder="https://github.com/...">
+
+                <label class="form-label" for="live_demo_link">Live Demo URL</label>
+                <input class="form-input" type="url" id="live_demo_link" name="live_demo_link"
+                       value="{{ project.live_demo_link if project and project.live_demo_link else '' }}"
+                       placeholder="https://...">
+
+                <label class="form-label" for="certificate_url">Certificate URL</label>
+                <input class="form-input" type="url" id="certificate_url" name="certificate_url"
+                       value="{{ project.certificate_url if project and project.certificate_url else '' }}"
+                       placeholder="https://...">
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--primary btn--block">
+                        {{ "Save Changes" if project else "Add Project" }}
+                    </button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn--outline btn--block">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}

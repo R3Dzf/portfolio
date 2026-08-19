@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ settings.name if settings else 'Portfolio' }}{% endblock %}</title>
+
+    <!-- Instant Theme Detection to prevent FOUC (Flash of Unstyled Content) -->
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('portfolio_theme');
+                if (savedTheme === 'light' || savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    {# ===== Dynamic theme color overrides from admin settings (applied to active theme) ===== #}
+    {% if settings and settings.color_primary %}
+    <style>
+        [data-theme="dark"] {
+            --clr-primary:      {{ settings.color_primary }};
+            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 85%, black);
+            --clr-accent:       {{ settings.color_accent or '#ff6b6b' }};
+            {% if settings.color_bg %}--clr-bg: {{ settings.color_bg }};{% endif %}
+            {% if settings.color_surface %}--clr-surface: {{ settings.color_surface }};{% endif %}
+            {% if settings.color_text %}--clr-text: {{ settings.color_text }};{% endif %}
+        }
+        [data-theme="light"] {
+            --clr-primary:      {{ settings.color_primary }};
+            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 85%, black);
+        }
+    </style>
+    {% endif %}
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- ===== Flash messages ===== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash--{{ category }}">
+            <span>{{ message }}</span>
+            <button class="flash__close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block body %}{% endblock %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

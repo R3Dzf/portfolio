@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container">
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Projects</h1>
+                <p class="admin-header__subtitle">{{ projects | length }} project{{ 's' if projects | length != 1 }} total</p>
+            </div>
+            <a href="{{ url_for('admin_add_project') }}" class="btn btn--primary">+ Add Project</a>
+        </div>
+
+        {% if projects %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">#</th>
+                        <th>Title</th>
+                        <th>Tech Stack</th>
+                        <th>Links</th>
+                        <th style="width:160px; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in projects %}
+                    <tr>
+                        <td class="cell-id">{{ p.id }}</td>
+                        <td>
+                            <strong>{{ p.title }}</strong>
+                            <p class="cell-desc">{{ p.description[:80] }}{% if p.description|length > 80 %}...{% endif %}</p>
+                        </td>
+                        <td>
+                            <div class="card__tags">
+                                {% for tech in p.tech_stack.split(',') %}
+                                <span class="tag tag--sm">{{ tech.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if p.github_link %}<a href="{{ p.github_link }}" target="_blank" class="link-badge">GitHub</a>{% endif %}
+                            {% if p.live_demo_link %}<a href="{{ p.live_demo_link }}" target="_blank" class="link-badge link-badge--blue">Demo</a>{% endif %}
+                            {% if p.certificate_url %}<a href="{{ p.certificate_url }}" target="_blank" class="link-badge link-badge--gold">Cert</a>{% endif %}
+                            {% if p.image %}<span class="link-badge" style="cursor:default;">Img</span>{% endif %}
+                            {% if not p.github_link and not p.live_demo_link and not p.certificate_url %}<span class="text-muted">--</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <a href="{{ url_for('admin_edit_project', project_id=p.id) }}" class="btn btn--sm btn--outline">Edit</a>
+                                <form method="POST" action="{{ url_for('admin_delete_project', project_id=p.id) }}"
+                                      style="display:inline;" onsubmit="return confirm('Delete &quot;{{ p.title }}&quot;?');">
+                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No projects yet.</p>
+            <a href="{{ url_for('admin_add_project') }}" class="btn btn--primary">Add your first project</a>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
