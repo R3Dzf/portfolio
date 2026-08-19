@@ -242,23 +242,25 @@
         <p class="section__subtitle reveal">Real-world applications, security tools, and automation pipelines</p>
 
         {% if projects %}
-        <!-- Interactive Category Filters -->
-        <div class="project-filters reveal">
-            <button type="button" class="project-filter-btn active" data-filter="all">
-                All Projects <span class="filter-count">({{ projects | length }})</span>
-            </button>
-            {% set tech_set = [] %}
-            {% for p in projects %}
-                {% for t in p.tech_stack.split(',') %}
-                    {% set clean_t = t.strip() %}
-                    {% if clean_t and clean_t not in tech_set and tech_set | length < 6 %}
-                        {% set _ = tech_set.append(clean_t) %}
-                        <button type="button" class="project-filter-btn" data-filter="{{ clean_t | lower }}">
-                            {{ clean_t }}
-                        </button>
-                    {% endif %}
+        <!-- Interactive Category Filters (Centered Segmented Bar) -->
+        <div class="project-filters-wrap reveal">
+            <div class="project-filters">
+                <button type="button" class="project-filter-btn active" data-filter="all">
+                    All Projects <span class="filter-count">{{ projects | length }}</span>
+                </button>
+                {% set tech_set = [] %}
+                {% for p in projects %}
+                    {% for t in p.tech_stack.split(',') %}
+                        {% set clean_t = t.strip() %}
+                        {% if clean_t and clean_t not in tech_set and tech_set | length < 5 %}
+                            {% set _ = tech_set.append(clean_t) %}
+                            <button type="button" class="project-filter-btn" data-filter="{{ clean_t | lower }}">
+                                {{ clean_t }}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
+            </div>
         </div>
 
         <div class="projects-grid" id="projectsGrid">
@@ -266,13 +268,23 @@
             <article class="project-card reveal"
                      data-tags="{{ p.tech_stack | lower }} {{ p.title | lower }}"
                      style="--delay: {{ loop.index0 * 0.12 }}s;">
-                {# Optional Project Image with Quick View Overlay #}
+                {# Optional Project Image with Window Frame Mockup #}
                 {% if p.image %}
-                <div class="project-card__img-wrap" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details &amp; screenshots">
-                    <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
-                         alt="{{ p.title }}" class="project-card__img" loading="lazy">
-                    <div class="project-card__img-overlay">
-                        <span class="project-card__quick-view">🔍 Quick View</span>
+                <div class="project-card__mockup" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details &amp; full screenshots">
+                    <div class="project-card__mockup-bar">
+                        <div class="mockup-dots">
+                            <span class="mockup-dot mockup-dot--red"></span>
+                            <span class="mockup-dot mockup-dot--yellow"></span>
+                            <span class="mockup-dot mockup-dot--green"></span>
+                        </div>
+                        <span class="mockup-title">{{ p.title }}.app</span>
+                    </div>
+                    <div class="project-card__img-wrap">
+                        <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
+                             alt="{{ p.title }}" class="project-card__img" loading="lazy">
+                        <div class="project-card__img-overlay">
+                            <span class="project-card__quick-view">🔍 Quick View &amp; Details</span>
+                        </div>
                     </div>
                 </div>
                 {% endif %}
@@ -335,6 +347,13 @@
                 <button class="project-modal__close" onclick="closeProjectModal()" aria-label="Close modal">&times;</button>
                 <div id="projectModalContent"></div>
             </div>
+        </div>
+
+        <!-- Fullscreen High-Res Image Viewer Lightbox -->
+        <div id="fullscreenViewer" class="fullscreen-viewer" aria-hidden="true" onclick="closeFullscreenImage()">
+            <button type="button" class="fullscreen-viewer__close" onclick="closeFullscreenImage()" aria-label="Close fullscreen">&times;</button>
+            <img id="fullscreenViewerImg" src="" alt="Full View" class="fullscreen-viewer__img" onclick="event.stopPropagation()">
+            <div id="fullscreenViewerCaption" class="fullscreen-viewer__caption"></div>
         </div>
 
         {# Pass project data as JSON for modal lightbox #}
@@ -785,8 +804,20 @@ function openProjectModal(index) {
     let imgHtml = '';
     if (p.image) {
         imgHtml = `
-            <div class="project-modal__img-wrap">
-                <img src="${p.image}" alt="${p.title}" class="project-modal__img">
+            <div class="modal-window-frame">
+                <div class="modal-window-bar">
+                    <div class="mockup-dots">
+                        <span class="mockup-dot mockup-dot--red"></span>
+                        <span class="mockup-dot mockup-dot--yellow"></span>
+                        <span class="mockup-dot mockup-dot--green"></span>
+                    </div>
+                    <span class="modal-window-url">https://github.com/AhmedBosha/${p.title.replace(/\s+/g, '-').toLowerCase()}</span>
+                    <div style="width: 40px;"></div>
+                </div>
+                <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')">
+                    <img src="${p.image}" alt="${p.title}" class="project-modal__img">
+                    <span class="project-modal__zoom-badge">🔍 Click to Open Full Image</span>
+                </div>
             </div>
         `;
     }
@@ -850,6 +881,30 @@ function closeProjectModal() {
     document.body.style.overflow = '';
 }
 
+// Fullscreen High-Res Image Lightbox Viewer
+function openFullscreenImage(imgSrc, caption) {
+    const viewer = document.getElementById('fullscreenViewer');
+    const img = document.getElementById('fullscreenViewerImg');
+    const cap = document.getElementById('fullscreenViewerCaption');
+    if (!viewer || !img) return;
+
+    img.src = imgSrc;
+    if (cap) cap.textContent = caption || '';
+    viewer.classList.add('open');
+    viewer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFullscreenImage() {
+    const viewer = document.getElementById('fullscreenViewer');
+    if (!viewer) return;
+    viewer.classList.remove('open');
+    viewer.setAttribute('aria-hidden', 'true');
+    if (!document.getElementById('projectModal').classList.contains('open')) {
+        document.body.style.overflow = '';
+    }
+}
+
 // Certificate Lightbox Preview Modal
 function openCertModal(imgSrc, title, issuer) {
     const modal = document.getElementById('projectModal');
@@ -857,8 +912,20 @@ function openCertModal(imgSrc, title, issuer) {
     if (!modal || !content) return;
 
     content.innerHTML = `
-        <div class="project-modal__img-wrap" style="height: auto; max-height: 520px; background: #000; text-align: center;">
-            <img src="${imgSrc}" alt="${title}" style="max-height: 500px; width: auto; max-width: 100%; object-fit: contain; margin: 0 auto; display: block;">
+        <div class="modal-window-frame">
+            <div class="modal-window-bar">
+                <div class="mockup-dots">
+                    <span class="mockup-dot mockup-dot--red"></span>
+                    <span class="mockup-dot mockup-dot--yellow"></span>
+                    <span class="mockup-dot mockup-dot--green"></span>
+                </div>
+                <span class="modal-window-url">📜 Official Certificate Verification</span>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="project-modal__img-wrap" onclick="openFullscreenImage('${imgSrc}', '${title.replace(/'/g, "\\'")}')" style="cursor: zoom-in;">
+                <img src="${imgSrc}" alt="${title}" class="project-modal__img">
+                <span class="project-modal__zoom-badge">🔍 Click to Open Full Resolution</span>
+            </div>
         </div>
         <div class="project-modal__body">
             <div class="project-modal__title-row">
@@ -906,7 +973,14 @@ function copyCredId(text, btn) {
 }
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeProjectModal();
+    if (e.key === 'Escape') {
+        const viewer = document.getElementById('fullscreenViewer');
+        if (viewer && viewer.classList.contains('open')) {
+            closeFullscreenImage();
+        } else {
+            closeProjectModal();
+        }
+    }
 });
 </script>
 {% endblock %}

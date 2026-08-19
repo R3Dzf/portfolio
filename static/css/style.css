@@ -835,47 +835,69 @@ img { max-width: 100%; display: block; }
     color: var(--clr-text-muted);
 }
 
-/* ---------- Project Filter Tabs ---------- */
-.project-filters {
+/* ==========================================================
+   7. PROJECT FILTERS (CLEAN SEGMENTED PILL BAR)
+   ========================================================== */
+.project-filters-wrap {
     display: flex;
     justify-content: center;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
     margin-bottom: 2.5rem;
+    padding: 0 var(--space-sm);
+}
+
+.project-filters {
+    display: inline-flex;
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border);
+    padding: 4px;
+    border-radius: 40px;
+    gap: 4px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.project-filters::-webkit-scrollbar {
+    display: none;
 }
 
 .project-filter-btn {
     padding: 8px 18px;
     border-radius: 30px;
+    border: none;
+    background: transparent;
     font-size: 0.88rem;
     font-weight: 600;
     color: var(--clr-text-muted);
-    background: var(--clr-surface);
-    border: 1px solid var(--clr-border);
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .project-filter-btn:hover {
     color: var(--clr-text);
-    border-color: var(--clr-primary);
-    transform: translateY(-2px);
 }
 
 .project-filter-btn.active {
     background: var(--clr-primary);
     color: #fff;
-    border-color: var(--clr-primary);
-    box-shadow: 0 4px 16px rgba(108, 99, 255, 0.35);
+    box-shadow: 0 4px 14px rgba(108, 99, 255, 0.35);
 }
 
 .filter-count {
-    font-size: 0.78rem;
-    opacity: 0.8;
+    font-size: 0.75rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.project-filter-btn:not(.active) .filter-count {
+    background: var(--clr-surface);
+    color: var(--clr-text-muted);
 }
 
 /* ---------- Project Cards (Clean, Spacious & Luxurious Showcase) ---------- */
@@ -903,39 +925,75 @@ img { max-width: 100%; display: block; }
     box-shadow: 0 16px 40px rgba(108, 99, 255, 0.18);
 }
 
-.project-card__img-wrap {
-    width: 100%;
-    height: 230px;
-    overflow: hidden;
-    position: relative;
+/* Card Mockup Window Frame */
+.project-card__mockup {
+    background: var(--clr-surface-2);
     border-bottom: 1px solid var(--clr-border);
     cursor: pointer;
+    overflow: hidden;
+    position: relative;
 }
 
-.project-card__img-wrap::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 60px;
-    background: linear-gradient(to bottom, transparent, var(--clr-card-bg));
-    pointer-events: none;
+.project-card__mockup-bar {
+    height: 30px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--clr-surface);
+    border-bottom: 1px solid var(--clr-border);
+}
+
+.mockup-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.mockup-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.mockup-dot--red { background: #ff5f56; }
+.mockup-dot--yellow { background: #ffbd2e; }
+.mockup-dot--green { background: #27c93f; }
+
+.mockup-title {
+    font-size: 0.72rem;
+    font-family: var(--ff-mono);
+    color: var(--clr-text-muted);
+}
+
+.project-card__img-wrap {
+    width: 100%;
+    height: 220px;
+    background: #0d0d14;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
 }
 
 .project-card__img {
+    max-width: 100%;
+    max-height: 100%;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .project-card:hover .project-card__img {
-    transform: scale(1.06);
+    transform: scale(1.05);
 }
 
 .project-card__img-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -949,14 +1007,14 @@ img { max-width: 100%; display: block; }
 }
 
 .project-card__quick-view {
-    padding: 8px 16px;
-    border-radius: 20px;
-    background: rgba(22, 22, 34, 0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--clr-border);
-    color: #fff;
+    padding: 8px 18px;
+    border-radius: 24px;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-primary);
+    color: var(--clr-text);
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     transform: translateY(10px);
     transition: transform 0.3s ease;
 }
@@ -1062,7 +1120,7 @@ img { max-width: 100%; display: block; }
 }
 
 /* ==========================================================
-   PROJECT DETAILS MODAL / LIGHTBOX
+   PROJECT DETAILS MODAL / LIGHTBOX & MOCKUP FRAME
    ========================================================== */
 .project-modal {
     position: fixed;
@@ -1085,8 +1143,8 @@ img { max-width: 100%; display: block; }
 .project-modal__backdrop {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(12px);
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(14px);
 }
 
 .project-modal__dialog {
@@ -1097,10 +1155,10 @@ img { max-width: 100%; display: block; }
     border-top: 3px solid var(--clr-primary);
     border-radius: 24px;
     width: 100%;
-    max-width: 680px;
-    max-height: 90vh;
+    max-width: 780px;
+    max-height: 92vh;
     overflow-y: auto;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
     transform: scale(0.92);
     transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1135,17 +1193,71 @@ img { max-width: 100%; display: block; }
     transform: rotate(90deg);
 }
 
-.project-modal__img-wrap {
-    width: 100%;
-    height: 300px;
-    overflow: hidden;
+/* Modal Window Frame Mockup */
+.modal-window-frame {
+    border-bottom: 1px solid var(--clr-border);
+    background: #0d0d14;
+}
+
+.modal-window-bar {
+    height: 36px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--clr-surface-2);
     border-bottom: 1px solid var(--clr-border);
 }
 
-.project-modal__img {
+.modal-window-url {
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    padding: 2px 14px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-family: var(--ff-mono);
+    color: var(--clr-text-muted);
+}
+
+.project-modal__img-wrap {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    min-height: 280px;
+    max-height: 480px;
+    background: #08080e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-in;
+    position: relative;
+    padding: 12px;
+}
+
+.project-modal__img {
+    max-width: 100%;
+    max-height: 450px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease;
+}
+
+.project-modal__img-wrap:hover .project-modal__img {
+    transform: scale(1.02);
+}
+
+.project-modal__zoom-badge {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: none;
 }
 
 .project-modal__body {
@@ -1179,6 +1291,69 @@ img { max-width: 100%; display: block; }
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--clr-border);
+}
+
+/* ==========================================================
+   FULLSCREEN HIGH-RES IMAGE VIEWER LIGHTBOX
+   ========================================================== */
+.fullscreen-viewer {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.94);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.fullscreen-viewer.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.fullscreen-viewer__img {
+    max-width: 95vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+.fullscreen-viewer__close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fullscreen-viewer__close:hover {
+    background: var(--clr-accent);
+    transform: rotate(90deg);
+}
+
+.fullscreen-viewer__caption {
+    color: #fff;
+    margin-top: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
 }
 
 /* ---------- Contact ---------- */
