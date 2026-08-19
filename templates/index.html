@@ -431,5 +431,34 @@
         }
     });
 })();
+
+/* ==========================================================
+   5. MOBILE NAVBAR AUTO-CLOSE & ANIMATED HAMBURGER
+   ========================================================== */
+(function() {
+    const toggle = document.querySelector('.navbar__toggle');
+    const links = document.querySelector('.navbar__links');
+    if (!toggle || !links) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        links.classList.toggle('open');
+        toggle.classList.toggle('active');
+    });
+
+    document.querySelectorAll('.navbar__links a').forEach(a => {
+        a.addEventListener('click', () => {
+            links.classList.remove('open');
+            toggle.classList.remove('active');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!links.contains(e.target) && !toggle.contains(e.target)) {
+            links.classList.remove('open');
+            toggle.classList.remove('active');
+        }
+    });
+})();
 </script>
 {% endblock %}

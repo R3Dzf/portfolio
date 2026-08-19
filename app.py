@@ -8,6 +8,10 @@ import os
 import sqlite3
 import functools
 import uuid
+import smtplib
+import threading
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -22,6 +26,70 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me-in-production")
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4 MB upload limit
+
+DATABASE = os.path.join(app.root_path, "portfolio.db")
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
+
+# Mail configuration for Gmail forward
+MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+MAIL_RECIPIENT = os.environ.get("MAIL_RECIPIENT")
+
+
+def send_email_async(sender_name, sender_email, message_content, recipient_email):
+    """Background worker to send email notification via Gmail SMTP."""
+    mail_user = os.environ.get("MAIL_USERNAME")
+    mail_pass = os.environ.get("MAIL_PASSWORD")
+    if not mail_user or not mail_pass:
+        return
+
+    to_email = recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"🔔 New Portfolio Message from {sender_name}"
+        msg["From"] = f"Portfolio Contact <{mail_user}>"
+        msg["To"] = to_email
+        if sender_email:
+            msg["Reply-To"] = sender_email
+
+        html = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
+            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
+            <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
+                <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
+                <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
+            </div>
+            <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
+                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
+            </div>
+            <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
+                Sent automatically from your Ahmed Bosha Portfolio Web App
+            </p>
+        </div>
+        """
+        msg.attach(MIMEText(html, "html"))
+
+        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=10)
+        server.starttls()
+        server.login(mail_user, mail_pass)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print(f"[MAIL ERROR] Failed to forward message to Gmail: {e}")
+
+
+def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
+    """Fire and forget email notification thread."""
+    thread = threading.Thread(
+        target=send_email_async,
+        args=(sender_name, sender_email, message_content, recipient_email),
+    )
+    thread.daemon = True
+    thread.start()
 
 DATABASE = os.path.join(app.root_path, "portfolio.db")
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
@@ -297,6 +365,11 @@ def contact():
         (sender_name, sender_email, message),
     )
     db.commit()
+
+    # Forward message directly to Gmail in background thread
+    settings = get_settings(db)
+    recipient = settings["email"] if settings and settings["email"] else None
+    notify_new_message(sender_name, sender_email, message, recipient)
 
     if is_ajax:
         return jsonify({"success": True, "message": "Message sent! I'll get back to you soon."})
