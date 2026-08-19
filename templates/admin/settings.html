@@ -1,220 +1,224 @@
 {% extends "base.html" %}
-{% block title %}Site Settings — Admin{% endblock %}
+{% block title %}Site Settings &amp; White-Label Ownership — Admin{% endblock %}
 
 {% block body %}
 {% set active_tab = 'settings' %}
 {% include "admin/nav.html" %}
 
 <main class="admin-main">
-    <div class="container" style="max-width:760px;">
+    <div class="container" style="max-width:800px;">
         <div class="form-card">
-            <h2 class="form-card__title">Site Settings &amp; Personalization</h2>
-            <p class="text-muted" style="margin-top:-1rem; margin-bottom:1.5rem; font-size:0.9rem;">
-                Customize your portfolio identity, animated typing phrases, social links, and theme colors.
+            <h2 class="form-card__title">Site Settings &amp; 100% Ownership</h2>
+            <p class="text-muted" style="margin-top:-1rem; margin-bottom:1.75rem; font-size:0.92rem;">
+                Customize every aspect of your portfolio, ownership text, animated roles, theme colors, and admin credentials.
             </p>
 
             <form method="POST" action="{{ url_for('admin_settings') }}" enctype="multipart/form-data">
 
                 <!-- ============================== -->
-                <!-- SECTION: Identity              -->
+                <!-- SECTION 1: Identity & Hero     -->
                 <!-- ============================== -->
-                <p class="form-section-label">Identity &amp; Hero Section</p>
+                <p class="form-section-label">1. Identity &amp; Hero Section</p>
 
-                <!-- Name -->
-                <label class="form-label" for="name">
-                    Display Name <span class="required">*</span>
-                </label>
-                <input class="form-input" type="text" id="name" name="name"
-                       value="{{ settings.name or '' }}"
-                       placeholder="e.g. Ahmed Bosha" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="name">Full Display Name <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="name" name="name"
+                               value="{{ settings.name or '' }}" placeholder="e.g. Ahmed Bosha" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="logo_text">Navbar Logo Brand</label>
+                        <input class="form-input" type="text" id="logo_text" name="logo_text"
+                               value="{{ settings.logo_text or '' }}" placeholder="e.g. AhmedBosha">
+                    </div>
+                </div>
 
-                <!-- Greeting -->
-                <label class="form-label" for="greeting">Greeting Text</label>
-                <input class="form-input" type="text" id="greeting" name="greeting"
-                       value="{{ settings.greeting or '' }}"
-                       placeholder="e.g. Hi, I'm">
-                <p class="form-hint">Appears above your name in the hero section.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="site_title">Browser Tab Title (SEO)</label>
+                        <input class="form-input" type="text" id="site_title" name="site_title"
+                               value="{{ settings.site_title or '' }}" placeholder="e.g. Ahmed Bosha — Engineering &amp; Software Portfolio">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="greeting">Greeting Word</label>
+                        <input class="form-input" type="text" id="greeting" name="greeting"
+                               value="{{ settings.greeting or '' }}" placeholder="e.g. Hi, I'm / Welcome, I'm">
+                    </div>
+                </div>
 
-                <!-- Animated Typing Phrases -->
-                <label class="form-label" for="typing_texts">Hero Animated Typing Phrases</label>
-                <input class="form-input" type="text" id="typing_texts" name="typing_texts"
-                       value="{{ settings.typing_texts or '' }}"
-                       placeholder="Engineering Student,Software Developer,Problem Solver,Automation Enthusiast">
-                <p class="form-hint">Comma-separated roles typed out dynamically with animated cursor.</p>
-                <input type="hidden" name="tagline" value="{{ settings.tagline or 'Engineering Student & Software Developer' }}">
+                <div class="form-group">
+                    <label class="form-label" for="typing_texts">Hero Animated Roles (Live Typing Effect)</label>
+                    <input class="form-input" type="text" id="typing_texts" name="typing_texts"
+                           value="{{ settings.typing_texts or '' }}"
+                           placeholder="Engineering Student,Software Developer,Problem Solver,Automation Enthusiast">
+                    <p class="form-hint">Comma-separated phrases typed out dynamically with animated blinking cursor.</p>
+                    <input type="hidden" name="tagline" value="{{ settings.tagline or 'Engineering Student & Software Developer' }}">
+                </div>
 
-                <!-- Bio -->
-                <label class="form-label" for="bio">Bio / About Me</label>
-                <textarea class="form-input form-textarea" id="bio" name="bio" rows="4"
-                          placeholder="Tell visitors about yourself...">{{ settings.bio or '' }}</textarea>
+                <div class="form-group">
+                    <label class="form-label" for="bio">Bio / About Me</label>
+                    <textarea class="form-input form-textarea" id="bio" name="bio" rows="4"
+                              placeholder="Tell visitors and recruiters about your engineering journey...">{{ settings.bio or '' }}</textarea>
+                </div>
 
                 <!-- Profile Photo -->
-                <label class="form-label">Profile Photo</label>
-                {% if settings.profile_photo %}
-                <div class="photo-preview">
-                    <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}"
-                         alt="Current profile photo" class="photo-preview__img">
-                    <div class="photo-preview__actions">
-                        <label class="btn btn--sm btn--outline">
-                            Change Photo
-                            <input type="file" name="profile_photo" accept="image/*"
-                                   style="display:none;" onchange="updatePhotoLabel(this)">
-                        </label>
-                        <label class="btn btn--sm btn--danger">
-                            <input type="checkbox" name="remove_photo" value="1" style="display:none;"
-                                   onchange="confirmRemovePhoto(this)">
-                            Remove
-                        </label>
+                <div class="form-group">
+                    <label class="form-label">Profile Photo</label>
+                    {% if settings.profile_photo %}
+                    <div class="photo-preview">
+                        <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}"
+                             alt="Current profile photo" class="photo-preview__img">
+                        <div class="photo-preview__actions">
+                            <label class="btn btn--sm btn--outline" for="profile_photo">Change Photo</label>
+                            <label class="btn btn--sm btn--danger">
+                                <input type="checkbox" name="remove_photo" value="1" style="display:none;"
+                                       onchange="this.form.submit()">
+                                Remove Photo
+                            </label>
+                        </div>
                     </div>
-                    <p class="form-hint photo-preview__name" id="newPhotoName"></p>
-                </div>
-                {% else %}
-                <div class="photo-upload">
-                    <label class="photo-upload__label">
+                    <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
+                    {% else %}
+                    <label class="photo-upload__label" for="profile_photo">
                         <span class="photo-upload__icon">+</span>
-                        <span class="photo-upload__text" id="uploadText">Click to upload a photo</span>
-                        <input type="file" name="profile_photo" accept="image/*"
-                               style="display:none;" onchange="updatePhotoLabel(this)">
+                        <span class="photo-upload__text">Click to upload a profile photo (PNG, JPG, WEBP)</span>
                     </label>
-                    <p class="form-hint">PNG, JPG, GIF, or WebP. Max 4 MB.</p>
+                    <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
+                    {% endif %}
                 </div>
-                {% endif %}
 
                 <!-- ============================== -->
-                <!-- SECTION: Links                 -->
+                <!-- SECTION 2: Footer & Ownership  -->
                 <!-- ============================== -->
-                <hr class="form-divider">
-                <p class="form-section-label">Social &amp; Contact Links</p>
+                <p class="form-section-label" style="margin-top: 2rem;">2. Footer &amp; Copyright Ownership</p>
 
-                <label class="form-label" for="email">Email</label>
-                <input class="form-input" type="email" id="email" name="email"
-                       value="{{ settings.email or '' }}"
-                       placeholder="you@example.com">
-
-                <label class="form-label" for="github_url">GitHub URL</label>
-                <input class="form-input" type="url" id="github_url" name="github_url"
-                       value="{{ settings.github_url or '' }}"
-                       placeholder="https://github.com/yourname">
-
-                <label class="form-label" for="linkedin_url">LinkedIn URL</label>
-                <input class="form-input" type="url" id="linkedin_url" name="linkedin_url"
-                       value="{{ settings.linkedin_url or '' }}"
-                       placeholder="https://linkedin.com/in/yourname">
-
-                <label class="form-label" for="twitter_url">Twitter / X URL</label>
-                <input class="form-input" type="url" id="twitter_url" name="twitter_url"
-                       value="{{ settings.twitter_url or '' }}"
-                       placeholder="https://x.com/yourname">
-
-                <label class="form-label" for="resume_url">Resume URL</label>
-                <input class="form-input" type="url" id="resume_url" name="resume_url"
-                       value="{{ settings.resume_url or '' }}"
-                       placeholder="https://drive.google.com/...">
-                <p class="form-hint">Link to your resume / CV (Google Drive, Dropbox, etc.).</p>
+                <div class="form-group">
+                    <label class="form-label" for="footer_text">Footer Copyright Text</label>
+                    <input class="form-input" type="text" id="footer_text" name="footer_text"
+                           value="{{ settings.footer_text or '© 2026 Ahmed Bosha' }}"
+                           placeholder="e.g. © 2026 Ahmed Bosha">
+                </div>
 
                 <!-- ============================== -->
-                <!-- SECTION: Theme                 -->
+                <!-- SECTION 3: Social & Contact    -->
                 <!-- ============================== -->
-                <hr class="form-divider">
-                <p class="form-section-label">Theme Colors</p>
-                <p class="form-hint" style="margin-bottom:1rem;">
-                    Click each swatch to open the color picker. Changes are visible immediately on save.
-                </p>
+                <p class="form-section-label" style="margin-top: 2rem;">3. Contact &amp; Social Links</p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Notification &amp; Contact Email</label>
+                        <input class="form-input" type="email" id="email" name="email"
+                               value="{{ settings.email or '' }}" placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="github_url">GitHub Profile URL</label>
+                        <input class="form-input" type="url" id="github_url" name="github_url"
+                               value="{{ settings.github_url or '' }}" placeholder="https://github.com/username">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="linkedin_url">LinkedIn URL</label>
+                        <input class="form-input" type="url" id="linkedin_url" name="linkedin_url"
+                               value="{{ settings.linkedin_url or '' }}" placeholder="https://linkedin.com/in/username">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="twitter_url">Twitter / X URL</label>
+                        <input class="form-input" type="url" id="twitter_url" name="twitter_url"
+                               value="{{ settings.twitter_url or '' }}" placeholder="https://x.com/username">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="resume_url">Resume / CV Link</label>
+                    <input class="form-input" type="url" id="resume_url" name="resume_url"
+                           value="{{ settings.resume_url or '' }}" placeholder="https://drive.google.com/... or direct link">
+                </div>
+
+                <!-- ============================== -->
+                <!-- SECTION 4: Theme Colors        -->
+                <!-- ============================== -->
+                <p class="form-section-label" style="margin-top: 2rem;">4. Visual Branding &amp; Palette</p>
 
                 <div class="color-grid">
                     <div class="color-field">
-                        <label class="form-label" for="color_primary">Primary</label>
+                        <label class="form-label">Primary Brand</label>
                         <div class="color-input-wrap">
-                            <input type="color" id="color_primary" name="color_primary"
-                                   value="{{ settings.color_primary or '#6c63ff' }}" class="color-swatch">
-                            <input type="text" class="form-input form-input--color"
+                            <input type="color" class="color-swatch" id="color_primary_swatch"
                                    value="{{ settings.color_primary or '#6c63ff' }}"
-                                   oninput="document.getElementById('color_primary').value=this.value"
-                                   maxlength="7">
+                                   oninput="document.getElementById('color_primary').value = this.value">
+                            <input class="form-input form-input--color" type="text" id="color_primary" name="color_primary"
+                                   value="{{ settings.color_primary or '#6c63ff' }}"
+                                   oninput="document.getElementById('color_primary_swatch').value = this.value">
                         </div>
                     </div>
 
                     <div class="color-field">
-                        <label class="form-label" for="color_accent">Accent</label>
+                        <label class="form-label">Accent Highlight</label>
                         <div class="color-input-wrap">
-                            <input type="color" id="color_accent" name="color_accent"
-                                   value="{{ settings.color_accent or '#ff6b6b' }}" class="color-swatch">
-                            <input type="text" class="form-input form-input--color"
+                            <input type="color" class="color-swatch" id="color_accent_swatch"
                                    value="{{ settings.color_accent or '#ff6b6b' }}"
-                                   oninput="document.getElementById('color_accent').value=this.value"
-                                   maxlength="7">
+                                   oninput="document.getElementById('color_accent').value = this.value">
+                            <input class="form-input form-input--color" type="text" id="color_accent" name="color_accent"
+                                   value="{{ settings.color_accent or '#ff6b6b' }}"
+                                   oninput="document.getElementById('color_accent_swatch').value = this.value">
                         </div>
                     </div>
 
                     <div class="color-field">
-                        <label class="form-label" for="color_bg">Background</label>
+                        <label class="form-label">Dark Background</label>
                         <div class="color-input-wrap">
-                            <input type="color" id="color_bg" name="color_bg"
-                                   value="{{ settings.color_bg or '#0f0f13' }}" class="color-swatch">
-                            <input type="text" class="form-input form-input--color"
-                                   value="{{ settings.color_bg or '#0f0f13' }}"
-                                   oninput="document.getElementById('color_bg').value=this.value"
-                                   maxlength="7">
+                            <input type="color" class="color-swatch" id="color_bg_swatch"
+                                   value="{{ settings.color_bg or '#0c0c12' }}"
+                                   oninput="document.getElementById('color_bg').value = this.value">
+                            <input class="form-input form-input--color" type="text" id="color_bg" name="color_bg"
+                                   value="{{ settings.color_bg or '#0c0c12' }}"
+                                   oninput="document.getElementById('color_bg_swatch').value = this.value">
                         </div>
                     </div>
 
                     <div class="color-field">
-                        <label class="form-label" for="color_surface">Surface</label>
+                        <label class="form-label">Dark Surface</label>
                         <div class="color-input-wrap">
-                            <input type="color" id="color_surface" name="color_surface"
-                                   value="{{ settings.color_surface or '#1a1a23' }}" class="color-swatch">
-                            <input type="text" class="form-input form-input--color"
-                                   value="{{ settings.color_surface or '#1a1a23' }}"
-                                   oninput="document.getElementById('color_surface').value=this.value"
-                                   maxlength="7">
-                        </div>
-                    </div>
-
-                    <div class="color-field">
-                        <label class="form-label" for="color_text">Text</label>
-                        <div class="color-input-wrap">
-                            <input type="color" id="color_text" name="color_text"
-                                   value="{{ settings.color_text or '#e4e4eb' }}" class="color-swatch">
-                            <input type="text" class="form-input form-input--color"
-                                   value="{{ settings.color_text or '#e4e4eb' }}"
-                                   oninput="document.getElementById('color_text').value=this.value"
-                                   maxlength="7">
+                            <input type="color" class="color-swatch" id="color_surface_swatch"
+                                   value="{{ settings.color_surface or '#161622' }}"
+                                   oninput="document.getElementById('color_surface').value = this.value">
+                            <input class="form-input form-input--color" type="text" id="color_surface" name="color_surface"
+                                   value="{{ settings.color_surface or '#161622' }}"
+                                   oninput="document.getElementById('color_surface_swatch').value = this.value">
                         </div>
                     </div>
                 </div>
 
                 <!-- ============================== -->
-                <!-- SUBMIT                         -->
+                <!-- SECTION 5: Admin Security      -->
                 <!-- ============================== -->
-                <div class="form-actions" style="margin-top:2rem;">
-                    <button type="submit" class="btn btn--primary btn--block">Save Settings</button>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn--outline btn--block">Cancel</a>
+                <p class="form-section-label" style="margin-top: 2rem;">5. Admin Login &amp; Security</p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="admin_user">Admin Username</label>
+                        <input class="form-input" type="text" id="admin_user" name="admin_user"
+                               value="{{ settings.admin_user or 'admin' }}" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="admin_pass">New Admin Password (leave blank to keep current)</label>
+                        <input class="form-input" type="password" id="admin_pass" name="admin_password"
+                               placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--space-xl); display: flex; gap: var(--space-md);">
+                    <button type="submit" class="btn btn--primary btn--lg">
+                        💾 Save All Settings &amp; Ownership
+                    </button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn--outline btn--lg">
+                        Cancel
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </main>
-
-<script>
-    /* Sync color swatch -> text input */
-    document.querySelectorAll('.color-swatch').forEach(swatch => {
-        swatch.addEventListener('input', function() {
-            this.parentElement.querySelector('.form-input--color').value = this.value;
-        });
-    });
-
-    function updatePhotoLabel(input) {
-        if (input.files && input.files[0]) {
-            const name = input.files[0].name;
-            const label = document.getElementById('newPhotoName') || document.getElementById('uploadText');
-            if (label) label.textContent = 'Selected: ' + name;
-        }
-    }
-
-    function confirmRemovePhoto(checkbox) {
-        if (checkbox.checked && !confirm('Remove the profile photo?')) {
-            checkbox.checked = false;
-        }
-    }
-</script>
 {% endblock %}

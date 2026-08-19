@@ -225,10 +225,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS site_settings (
             id              INTEGER PRIMARY KEY CHECK (id = 1),
             name            TEXT    DEFAULT 'Ahmed Bosha',
+            logo_text       TEXT    DEFAULT 'AhmedBosha',
+            site_title      TEXT    DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio',
             greeting        TEXT    DEFAULT 'Hi, I''m',
             tagline         TEXT    DEFAULT 'Engineering Student & Software Developer',
             typing_texts    TEXT    DEFAULT 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast',
             bio             TEXT    DEFAULT 'Class of 2029. Passionate about automation, system analysis, and reverse engineering. I build tools that turn complex workflows into clean, efficient solutions.',
+            footer_text     TEXT    DEFAULT '© 2026 Ahmed Bosha',
             profile_photo   TEXT,
             email           TEXT    DEFAULT 'ahmedbosha2566@gmail.com',
             github_url      TEXT    DEFAULT 'https://github.com/AhmedBosha',
@@ -239,7 +242,9 @@ def init_db():
             color_accent    TEXT    DEFAULT '#ff6b6b',
             color_bg        TEXT    DEFAULT '#0c0c12',
             color_surface   TEXT    DEFAULT '#161622',
-            color_text      TEXT    DEFAULT '#f0f0f8'
+            color_text      TEXT    DEFAULT '#f0f0f8',
+            admin_user      TEXT    DEFAULT 'admin',
+            admin_pass_hash TEXT
         );
 
         CREATE TABLE IF NOT EXISTS education (
@@ -323,6 +328,22 @@ def init_db():
             created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+
+    # Safe Schema Migrations (for backwards compatibility)
+    cursor = db.cursor()
+    cursor.execute("PRAGMA table_info(site_settings)")
+    existing_cols = [row[1] for row in cursor.fetchall()]
+    needed_cols = [
+        ("logo_text", "TEXT DEFAULT 'AhmedBosha'"),
+        ("site_title", "TEXT DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio'"),
+        ("footer_text", "TEXT DEFAULT '© 2026 Ahmed Bosha'"),
+        ("admin_user", "TEXT DEFAULT 'admin'"),
+        ("admin_pass_hash", "TEXT"),
+    ]
+    for col, definition in needed_cols:
+        if col not in existing_cols:
+            cursor.execute(f"ALTER TABLE site_settings ADD COLUMN {col} {definition}")
+    db.commit()
 
     # ---- 1. Seed site_settings ----
     if db.execute("SELECT COUNT(*) FROM site_settings").fetchone()[0] == 0:
@@ -636,9 +657,15 @@ def admin_login():
     if session.get("admin_logged_in"):
         return redirect(url_for("admin_dashboard"))
     if request.method == "POST":
-        username = request.form.get("username", "")
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
+
+        db = get_db()
+        settings = get_settings(db)
+        expected_user = settings["admin_user"] if settings and settings["admin_user"] else ADMIN_USERNAME
+        expected_pass_hash = settings["admin_pass_hash"] if settings and settings["admin_pass_hash"] else ADMIN_PASSWORD_HASH
+
+        if username == expected_user and check_password_hash(expected_pass_hash, password):
             session["admin_logged_in"] = True
             flash("Welcome back! Login successful.", "success")
             return redirect(url_for("admin_dashboard"))
@@ -663,19 +690,24 @@ def admin_dashboard():
 
 
 # ---------------------------------------------------------------------------
-# Admin: Site Settings
+# Admin: Site Settings (100% White-label Ownership)
 # ---------------------------------------------------------------------------
 
 @app.route("/admin/settings", methods=["GET", "POST"])
 @login_required
 def admin_settings():
     db = get_db()
+    settings = get_settings(db)
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
+        logo_text = request.form.get("logo_text", "").strip() or name.replace(" ", "")
+        site_title = request.form.get("site_title", "").strip() or f"{name} — Portfolio"
         greeting = request.form.get("greeting", "").strip()
         tagline = request.form.get("tagline", "").strip()
         typing_texts = request.form.get("typing_texts", "").strip()
         bio = request.form.get("bio", "").strip()
+        footer_text = request.form.get("footer_text", "").strip() or f"© 2026 {name}"
         email = request.form.get("email", "").strip() or None
         github_url = request.form.get("github_url", "").strip() or None
         linkedin_url = request.form.get("linkedin_url", "").strip() or None
@@ -687,7 +719,16 @@ def admin_settings():
         color_surface = request.form.get("color_surface", "#161622").strip()
         color_text = request.form.get("color_text", "#f0f0f8").strip()
 
-        profile_photo = get_settings(db)["profile_photo"]
+        # Admin credentials update
+        new_admin_user = request.form.get("admin_user", "").strip()
+        new_admin_pass = request.form.get("admin_password", "").strip()
+
+        admin_user = new_admin_user if new_admin_user else (settings["admin_user"] if settings and settings["admin_user"] else ADMIN_USERNAME)
+        admin_pass_hash = settings["admin_pass_hash"] if settings and settings["admin_pass_hash"] else ADMIN_PASSWORD_HASH
+        if new_admin_pass:
+            admin_pass_hash = generate_password_hash(new_admin_pass)
+
+        profile_photo = settings["profile_photo"] if settings else None
         if "profile_photo" in request.files:
             file = request.files["profile_photo"]
             if file and file.filename and allowed_file(file.filename):
@@ -699,16 +740,18 @@ def admin_settings():
 
         db.execute(
             """UPDATE site_settings SET
-                name=?, greeting=?, tagline=?, typing_texts=?, bio=?, profile_photo=?,
-                email=?, github_url=?, linkedin_url=?, twitter_url=?, resume_url=?,
-                color_primary=?, color_accent=?, color_bg=?, color_surface=?, color_text=?
+                name=?, logo_text=?, site_title=?, greeting=?, tagline=?, typing_texts=?, bio=?,
+                footer_text=?, profile_photo=?, email=?, github_url=?, linkedin_url=?, twitter_url=?, resume_url=?,
+                color_primary=?, color_accent=?, color_bg=?, color_surface=?, color_text=?,
+                admin_user=?, admin_pass_hash=?
                WHERE id=1""",
-            (name, greeting, tagline, typing_texts, bio, profile_photo,
-             email, github_url, linkedin_url, twitter_url, resume_url,
-             color_primary, color_accent, color_bg, color_surface, color_text),
+            (name, logo_text, site_title, greeting, tagline, typing_texts, bio,
+             footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url,
+             color_primary, color_accent, color_bg, color_surface, color_text,
+             admin_user, admin_pass_hash),
         )
         db.commit()
-        flash("Site settings saved!", "success")
+        flash("Site settings & ownership configuration saved successfully!", "success")
         return redirect(url_for("admin_settings"))
 
     return render_template("admin/settings.html", settings=get_settings(db))
