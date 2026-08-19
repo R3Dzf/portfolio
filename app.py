@@ -44,6 +44,7 @@ def send_email_async(sender_name, sender_email, message_content, recipient_email
     mail_user = os.environ.get("MAIL_USERNAME")
     mail_pass = os.environ.get("MAIL_PASSWORD")
     if not mail_user or not mail_pass:
+        print("[MAIL NOTICE] Email forwarding skipped: MAIL_USERNAME or MAIL_PASSWORD environment variables are not set.")
         return
 
     to_email = recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user
@@ -78,6 +79,7 @@ def send_email_async(sender_name, sender_email, message_content, recipient_email
         server.login(mail_user, mail_pass)
         server.send_message(msg)
         server.quit()
+        print(f"[MAIL SUCCESS] Notification forwarded to {to_email}")
     except Exception as e:
         print(f"[MAIL ERROR] Failed to forward message to Gmail: {e}")
 
@@ -353,10 +355,10 @@ def contact():
         sender_email = request.form.get("sender_email", "").strip() or None
         message = request.form.get("message", "").strip()
 
-    if not sender_name or not message:
+    if not sender_name or not sender_email or not message:
         if is_ajax:
-            return jsonify({"success": False, "error": "Name and message are required."}), 400
-        flash("Name and message are required.", "danger")
+            return jsonify({"success": False, "error": "Name, email, and message are required."}), 400
+        flash("Name, email, and message are required.", "danger")
         return redirect(url_for("index") + "#contact")
 
     db = get_db()
