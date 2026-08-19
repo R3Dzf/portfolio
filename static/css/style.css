@@ -1162,7 +1162,9 @@ img { max-width: 100%; display: block; }
 .project-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 1000;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1180,8 +1182,9 @@ img { max-width: 100%; display: block; }
 .project-modal__backdrop {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(10px);
+    background: rgba(12, 12, 20, 0.90);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .project-modal__dialog {
@@ -1254,40 +1257,28 @@ img { max-width: 100%; display: block; }
 
 .project-modal__img-wrap {
     width: 100%;
-    height: 280px;
-    background: var(--clr-surface-2);
+    height: 250px;
+    background: #080810;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     cursor: zoom-in;
     position: relative;
-    padding: 14px;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 1px solid var(--clr-border);
 }
 
 .project-modal__img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
 }
 
 .project-modal__img-wrap:hover .project-modal__img {
-    transform: scale(1.02);
-}
-
-.modal-zoom-hint-bar {
-    text-align: center;
-    padding: 6px 12px;
-    background: var(--clr-surface);
-    border-top: 1px solid var(--clr-border);
-    color: var(--clr-primary);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
+    transform: scale(1.05);
 }
 
 .project-modal__body {
@@ -1329,9 +1320,12 @@ img { max-width: 100%; display: block; }
 .fullscreen-viewer {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 2000;
-    background: rgba(0, 0, 0, 0.94);
+    width: 100vw;
+    height: 100vh;
+    z-index: 999999;
+    background: rgba(8, 8, 14, 0.96);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     flex-direction: column;
     align-items: center;

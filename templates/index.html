@@ -268,38 +268,13 @@
             <article class="project-card reveal"
                      data-tags="{{ p.tech_stack | lower }} {{ p.title | lower }}"
                      style="--delay: {{ loop.index0 * 0.12 }}s;">
-                {# Project Header: Image Mockup or Terminal Code Banner #}
+                {# Project Image (if present) #}
                 {% if p.image %}
-                <div class="project-card__mockup" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details &amp; full screenshots">
-                    <div class="project-card__mockup-bar">
-                        <div class="mockup-dots">
-                            <span class="mockup-dot mockup-dot--red"></span>
-                            <span class="mockup-dot mockup-dot--yellow"></span>
-                            <span class="mockup-dot mockup-dot--green"></span>
-                        </div>
-                        <span class="mockup-title">{{ p.title }}.app</span>
-                    </div>
-                    <div class="project-card__img-wrap">
-                        <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
-                             alt="{{ p.title }}" class="project-card__img" loading="lazy">
-                        <div class="project-card__img-overlay">
-                            <span class="project-card__quick-view">🔍 Quick View &amp; Details</span>
-                        </div>
-                    </div>
-                </div>
-                {% else %}
-                <div class="project-card__no-img-banner" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details">
-                    <div class="no-img-banner__top">
-                        <div class="mockup-dots">
-                            <span class="mockup-dot mockup-dot--red"></span>
-                            <span class="mockup-dot mockup-dot--yellow"></span>
-                            <span class="mockup-dot mockup-dot--green"></span>
-                        </div>
-                        <span class="no-img-banner__tag">CORE REPO</span>
-                    </div>
-                    <div class="no-img-banner__code">
-                        <code>$ git clone {{ p.title | lower }}.git</code><br>
-                        <code>$ python main.py --run</code>
+                <div class="project-card__img-wrap" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details">
+                    <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
+                         alt="{{ p.title }}" class="project-card__img" loading="lazy">
+                    <div class="project-card__img-overlay">
+                        <span class="project-card__quick-view">🔍 Quick View</span>
                     </div>
                 </div>
                 {% endif %}
@@ -353,22 +328,6 @@
                     </div>
                 </article>
             {% endfor %}
-        </div>
-
-        <!-- Project Details Modal / Lightbox -->
-        <div id="projectModal" class="project-modal" aria-hidden="true">
-            <div class="project-modal__backdrop" onclick="closeProjectModal()"></div>
-            <div class="project-modal__dialog">
-                <button class="project-modal__close" onclick="closeProjectModal()" aria-label="Close modal">&times;</button>
-                <div id="projectModalContent"></div>
-            </div>
-        </div>
-
-        <!-- Fullscreen High-Res Image Viewer Lightbox -->
-        <div id="fullscreenViewer" class="fullscreen-viewer" aria-hidden="true" onclick="closeFullscreenImage()">
-            <button type="button" class="fullscreen-viewer__close" onclick="closeFullscreenImage()" aria-label="Close fullscreen">&times;</button>
-            <img id="fullscreenViewerImg" src="" alt="Full View" class="fullscreen-viewer__img" onclick="event.stopPropagation()">
-            <div id="fullscreenViewerCaption" class="fullscreen-viewer__caption"></div>
         </div>
 
         {# Pass project data as JSON for modal lightbox #}
@@ -574,6 +533,23 @@
         </p>
     </div>
 </footer>
+
+<!-- Global Project Details Modal / Lightbox -->
+<div id="projectModal" class="project-modal" aria-hidden="true">
+    <div class="project-modal__backdrop" onclick="closeProjectModal()"></div>
+    <div class="project-modal__dialog">
+        <button class="project-modal__close" onclick="closeProjectModal()" aria-label="Close modal">&times;</button>
+        <div id="projectModalContent"></div>
+    </div>
+</div>
+
+<!-- Global Fullscreen High-Res Image Viewer Lightbox -->
+<div id="fullscreenViewer" class="fullscreen-viewer" aria-hidden="true" onclick="closeFullscreenImage()">
+    <button type="button" class="fullscreen-viewer__close" onclick="closeFullscreenImage()" aria-label="Close fullscreen">&times;</button>
+    <img id="fullscreenViewerImg" src="" alt="Full View" class="fullscreen-viewer__img" onclick="event.stopPropagation()">
+    <div id="fullscreenViewerCaption" class="fullscreen-viewer__caption"></div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -819,21 +795,8 @@ function openProjectModal(index) {
     let imgHtml = '';
     if (p.image) {
         imgHtml = `
-            <div class="modal-window-frame">
-                <div class="modal-window-bar">
-                    <div class="mockup-dots">
-                        <span class="mockup-dot mockup-dot--red"></span>
-                        <span class="mockup-dot mockup-dot--yellow"></span>
-                        <span class="mockup-dot mockup-dot--green"></span>
-                    </div>
-                    <span class="modal-window-url">${p.title}.app</span>
-                </div>
-                <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')" title="Click to view full resolution image">
-                    <img src="${p.image}" alt="${p.title}" class="project-modal__img">
-                </div>
-                <div class="modal-zoom-hint-bar" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')">
-                    🔍 Tap image to open full resolution (100%)
-                </div>
+            <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')" title="Click to view full resolution">
+                <img src="${p.image}" alt="${p.title}" class="project-modal__img">
             </div>
         `;
     }
