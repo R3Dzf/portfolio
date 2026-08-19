@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Testimonials &amp; Recommendations — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
+            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
+            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
+            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
+            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--primary">Testimonials</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:960px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Testimonials &amp; Endorsements</h1>
+                <p class="admin-header__subtitle">{{ testimonials_list | length }} recommendation{{ 's' if testimonials_list | length != 1 }}</p>
+            </div>
+        </div>
+
+        <!-- Add Testimonial Form -->
+        <div class="form-card" style="margin-bottom: var(--space-lg);">
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Testimonial / Recommendation</h3>
+            <form method="POST" action="{{ url_for('admin_add_testimonial') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="c_name">Person / Client / Mentor Name <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="c_name" name="client_name" placeholder="e.g. Eng. Mohamed Tarek" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="c_role">Role / Title / Company <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="c_role" name="client_role" placeholder="e.g. Senior Software Architect &amp; Mentor" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 3;">
+                        <label class="form-label" for="t_quote">Quote / Recommendation Text <span class="required">*</span></label>
+                        <textarea class="form-input form-textarea" id="t_quote" name="quote" rows="3" placeholder="Paste the feedback or testimonial quote..." required></textarea>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="t_ord">Order</label>
+                        <input class="form-input" type="number" id="t_ord" name="sort_order" value="{{ (testimonials_list | length) + 1 }}">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn--primary">Add Testimonial</button>
+            </form>
+        </div>
+
+        <!-- Existing Testimonials Records -->
+        {% if testimonials_list %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">#</th>
+                        <th>Name &amp; Role</th>
+                        <th>Testimonial Quote</th>
+                        <th style="width: 140px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in testimonials_list %}
+                    <tr>
+                        <td class="cell-id">{{ loop.index }}</td>
+                        <td>
+                            <form id="edit-t-{{ t.id }}" method="POST" action="{{ url_for('admin_edit_testimonial', item_id=t.id) }}">
+                                <input class="form-input form-input--sm" type="text" name="client_name" value="{{ t.client_name }}" required style="font-weight: 600; margin-bottom: 4px;">
+                                <input class="form-input form-input--sm" type="text" name="client_role" value="{{ t.client_role }}" required placeholder="Role">
+                                <input type="hidden" name="sort_order" value="{{ t.sort_order }}">
+                        </td>
+                        <td>
+                                <textarea class="form-input form-input--sm" name="quote" rows="3" required>{{ t.quote }}</textarea>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <button type="submit" form="edit-t-{{ t.id }}" class="btn btn--sm btn--outline">Save</button>
+                                <form method="POST" action="{{ url_for('admin_delete_testimonial', item_id=t.id) }}"
+                                      style="display:inline;" onsubmit="return confirm('Delete this testimonial?');">
+                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No testimonials added yet. Display endorsements from instructors, mentors, or clients!</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

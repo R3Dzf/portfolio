@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Work Experience &amp; Training — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--primary">Experience</a>
+            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
+            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
+            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
+            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:960px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Work Experience &amp; Practical Training</h1>
+                <p class="admin-header__subtitle">{{ experiences_list | length }} experience timeline record{{ 's' if experiences_list | length != 1 }}</p>
+            </div>
+        </div>
+
+        <!-- Add Experience Form -->
+        <div class="form-card" style="margin-bottom: var(--space-lg);">
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Work Experience / Training</h3>
+            <form method="POST" action="{{ url_for('admin_add_experience') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="role_title">Role / Position Title <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="role_title" name="title" placeholder="e.g. Reverse Engineering & Security Researcher" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="company">Company / Organization / Institute <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="company" name="company" placeholder="e.g. National Telecommunication Institute (NTI)" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="loc">Location (Optional)</label>
+                        <input class="form-input" type="text" id="loc" name="location" placeholder="e.g. Remote / Egypt">
+                    </div>
+                    <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr 60px; gap: 8px; align-items: end;">
+                        <div>
+                            <label class="form-label" for="s_dt">Start Date</label>
+                            <input class="form-input" type="text" id="s_dt" name="start_date" placeholder="e.g. 2024" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="e_dt">End Date</label>
+                            <input class="form-input" type="text" id="e_dt" name="end_date" placeholder="e.g. Present">
+                        </div>
+                        <div style="padding-bottom: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer;">
+                                <input type="checkbox" name="is_current" value="1"> Current
+                            </label>
+                        </div>
+                        <div>
+                            <label class="form-label" for="s_ord_exp">Order</label>
+                            <input class="form-input" type="number" id="s_ord_exp" name="sort_order" value="{{ (experiences_list | length) + 1 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="exp_desc">Description &amp; Key Responsibilities <span class="required">*</span></label>
+                    <textarea class="form-input form-textarea" id="exp_desc" name="description" rows="3" placeholder="Describe the practical training, engineering tools built, research, or impact..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn--primary">Add Experience</button>
+            </form>
+        </div>
+
+        <!-- Existing Experience Timeline Records -->
+        {% if experiences_list %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">#</th>
+                        <th>Role &amp; Organization</th>
+                        <th>Period</th>
+                        <th>Description</th>
+                        <th style="width: 140px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in experiences_list %}
+                    <tr>
+                        <td class="cell-id">{{ loop.index }}</td>
+                        <td>
+                            <form id="edit-exp-{{ exp.id }}" method="POST" action="{{ url_for('admin_edit_experience', item_id=exp.id) }}">
+                                <input class="form-input form-input--sm" type="text" name="title" value="{{ exp.title }}" required style="margin-bottom: 4px; font-weight: 600;">
+                                <input class="form-input form-input--sm" type="text" name="company" value="{{ exp.company }}" placeholder="Company" required style="margin-bottom: 4px;">
+                                <input class="form-input form-input--sm" type="text" name="location" value="{{ exp.location or '' }}" placeholder="Location">
+                        </td>
+                        <td>
+                                <input class="form-input form-input--sm" type="text" name="start_date" value="{{ exp.start_date }}" placeholder="Start" style="margin-bottom: 4px; width: 90px;">
+                                <input class="form-input form-input--sm" type="text" name="end_date" value="{{ exp.end_date or '' }}" placeholder="End" style="margin-bottom: 4px; width: 90px;">
+                                <label style="display:block; font-size:0.75rem; margin-top:4px;">
+                                    <input type="checkbox" name="is_current" value="1" {% if exp.is_current %}checked{% endif %}> Current
+                                </label>
+                                <input type="hidden" name="sort_order" value="{{ exp.sort_order }}">
+                        </td>
+                        <td>
+                                <textarea class="form-input form-input--sm" name="description" rows="3" required>{{ exp.description }}</textarea>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <button type="submit" form="edit-exp-{{ exp.id }}" class="btn btn--sm btn--outline">Save</button>
+                                <form method="POST" action="{{ url_for('admin_delete_experience', item_id=exp.id) }}"
+                                      style="display:inline;" onsubmit="return confirm('Delete this experience entry?');">
+                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No work experience or training records added yet. Add your first experience above!</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

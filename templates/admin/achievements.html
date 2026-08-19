@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Achievements &amp; Certifications — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
+            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
+            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
+            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--primary">Achievements</a>
+            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:960px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Achievements &amp; Certifications</h1>
+                <p class="admin-header__subtitle">{{ achievements_list | length }} certification &amp; achievement record{{ 's' if achievements_list | length != 1 }}</p>
+            </div>
+        </div>
+
+        <!-- Add Achievement Form -->
+        <div class="form-card" style="margin-bottom: var(--space-lg);">
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Achievement or Certificate</h3>
+            <form method="POST" action="{{ url_for('admin_add_achievement') }}">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label" for="ach_title">Title <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="ach_title" name="title" placeholder="e.g. NTI Software Engineering &amp; Foundations" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="issuer">Issuer / Organization</label>
+                        <input class="form-input" type="text" id="issuer" name="issuer" placeholder="e.g. NTI / HackerRank">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="cred_url">Credential URL / Verification Link</label>
+                        <input class="form-input" type="url" id="cred_url" name="credential_url" placeholder="https://...">
+                    </div>
+                    <div class="form-group" style="display: grid; grid-template-columns: 1fr 60px 60px; gap: 8px;">
+                        <div>
+                            <label class="form-label" for="ach_dt">Date / Year</label>
+                            <input class="form-input" type="text" id="ach_dt" name="date_earned" placeholder="e.g. 2025">
+                        </div>
+                        <div>
+                            <label class="form-label" for="ach_icon">Icon</label>
+                            <input class="form-input" type="text" id="ach_icon" name="icon" value="🏆">
+                        </div>
+                        <div>
+                            <label class="form-label" for="ach_ord">Order</label>
+                            <input class="form-input" type="number" id="ach_ord" name="sort_order" value="{{ (achievements_list | length) + 1 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="ach_desc">Description / Details</label>
+                    <textarea class="form-input form-textarea" id="ach_desc" name="description" rows="2" placeholder="Brief context about this achievement or certificate..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn--primary">Add Achievement</button>
+            </form>
+        </div>
+
+        <!-- Existing Achievements Records -->
+        {% if achievements_list %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">#</th>
+                        <th style="width: 45px;">Icon</th>
+                        <th>Title &amp; Issuer</th>
+                        <th>Link / Date</th>
+                        <th>Description</th>
+                        <th style="width: 140px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ach in achievements_list %}
+                    <tr>
+                        <td class="cell-id">{{ loop.index }}</td>
+                        <td>
+                            <form id="edit-ach-{{ ach.id }}" method="POST" action="{{ url_for('admin_edit_achievement', item_id=ach.id) }}">
+                                <input class="form-input form-input--sm" type="text" name="icon" value="{{ ach.icon or '🏆' }}" style="width: 45px; text-align: center;">
+                        </td>
+                        <td>
+                                <input class="form-input form-input--sm" type="text" name="title" value="{{ ach.title }}" required style="font-weight: 600; margin-bottom: 4px;">
+                                <input class="form-input form-input--sm" type="text" name="issuer" value="{{ ach.issuer or '' }}" placeholder="Issuer">
+                        </td>
+                        <td>
+                                <input class="form-input form-input--sm" type="text" name="credential_url" value="{{ ach.credential_url or '' }}" placeholder="URL" style="margin-bottom: 4px; font-size: 0.75rem;">
+                                <input class="form-input form-input--sm" type="text" name="date_earned" value="{{ ach.date_earned or '' }}" placeholder="Date">
+                                <input type="hidden" name="sort_order" value="{{ ach.sort_order }}">
+                        </td>
+                        <td>
+                                <textarea class="form-input form-input--sm" name="description" rows="2" placeholder="Description">{{ ach.description or '' }}</textarea>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <button type="submit" form="edit-ach-{{ ach.id }}" class="btn btn--sm btn--outline">Save</button>
+                                <form method="POST" action="{{ url_for('admin_delete_achievement', item_id=ach.id) }}"
+                                      style="display:inline;" onsubmit="return confirm('Delete this achievement?');">
+                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No achievements added yet. Showcase your certificates and honors above!</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

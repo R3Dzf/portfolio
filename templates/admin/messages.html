@@ -6,8 +6,16 @@
     <div class="container admin-nav__inner">
         <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
         <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
             <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
-            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--primary">Messages</a>
+            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
+            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--outline">Education</a>
+            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
+            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
+            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--primary">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
             <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
             <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
             <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>

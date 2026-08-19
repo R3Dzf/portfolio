@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ settings.name if settings else 'Ahmed Bosha' }} — Portfolio{% endblock %}
+{% block title %}{{ settings.name if settings else 'Ahmed Bosha' }} — Engineering &amp; Software Portfolio{% endblock %}
 
 {% block body %}
 <!-- ===== Navigation ===== -->
@@ -19,8 +19,12 @@
         </a>
         <ul class="navbar__links">
             <li><a href="#about">About</a></li>
-            <li><a href="#skills">Skills</a></li>
+            {% if education_list %}<li><a href="#education">Education</a></li>{% endif %}
+            {% if skill_categories %}<li><a href="#skills">Skills</a></li>{% endif %}
+            {% if experiences_list %}<li><a href="#experience">Experience</a></li>{% endif %}
+            {% if services_list %}<li><a href="#services">Services</a></li>{% endif %}
             <li><a href="#projects">Projects</a></li>
+            {% if achievements_list %}<li><a href="#achievements">Achievements</a></li>{% endif %}
             <li><a href="#contact">Contact</a></li>
         </ul>
 
@@ -43,14 +47,14 @@
                 </svg>
             </button>
 
-            <button class="navbar__toggle" aria-label="Toggle menu" onclick="document.querySelector('.navbar__links').classList.toggle('open')">
+            <button class="navbar__toggle" aria-label="Toggle menu">
                 <span></span><span></span><span></span>
             </button>
         </div>
     </div>
 </nav>
 
-<!-- ===== Hero ===== -->
+<!-- ===== 1 & 2. Cover / Hero & About ===== -->
 <header class="hero" id="about">
     <div class="container hero__inner">
         {# Profile Photo #}
@@ -59,58 +63,112 @@
             <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}"
                  alt="{{ settings.name }}" class="hero__photo">
         </div>
+        {% else %}
+        <div class="hero__photo-wrap hero__photo-wrap--placeholder reveal">
+            <div class="hero__photo-initials">
+                {{ settings.name[:2].upper() if settings and settings.name else 'AB' }}
+            </div>
+        </div>
         {% endif %}
 
-        <p class="hero__greeting reveal">{{ settings.greeting if settings and settings.greeting else "Hi, I'm" }}</p>
-        <h1 class="hero__name reveal">{{ settings.name if settings and settings.name else 'Ahmed Bosha' }}</h1>
-
-        {# Typing effect tagline #}
-        <p class="hero__tagline reveal">
-            <span id="typing-text"></span><span class="typing-cursor">|</span>
+        <p class="hero__greeting reveal" style="--delay: 0.1s;">
+            {{ settings.greeting if settings and settings.greeting else "Hi, I'm" }}
         </p>
 
-        <p class="hero__bio reveal">
+        <h1 class="hero__name reveal" style="--delay: 0.2s;">
+            {{ settings.name if settings and settings.name else 'Ahmed Bosha' }}
+        </h1>
+
+        {# Live Animated Typing Tagline #}
+        <p class="hero__tagline reveal" style="--delay: 0.3s;">
+            <span id="typedText"></span><span class="typing-cursor">|</span>
+        </p>
+
+        {# Hidden data container for typing phrases #}
+        <div id="typingData" style="display:none;"
+             data-phrases="{{ settings.typing_texts if settings and settings.typing_texts else 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast' }}"></div>
+
+        <p class="hero__bio reveal" style="--delay: 0.4s;">
             {{ settings.bio if settings and settings.bio else 'Class of 2029. Passionate about automation, system analysis, and problem-solving. I build tools that turn complex workflows into clean, efficient solutions.' }}
         </p>
-        <div class="hero__cta reveal">
-            <a href="#projects" class="btn btn--primary">View Projects</a>
-            <a href="#contact" class="btn btn--outline">Get in Touch</a>
+
+        <div class="hero__cta reveal" style="--delay: 0.5s;">
+            <a href="#projects" class="btn btn--primary btn--lg">View Projects</a>
+            <a href="#contact" class="btn btn--outline btn--lg">Get in Touch</a>
+            {% if settings and settings.resume_url %}
+            <a href="{{ settings.resume_url }}" target="_blank" rel="noopener" class="btn btn--dark btn--lg">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Resume
+            </a>
+            {% endif %}
         </div>
     </div>
 </header>
 
-<!-- ===== Skills (Categorized Modern Tech Stack) ===== -->
+<!-- ===== 3. Education ===== -->
+{% if education_list %}
+<section class="section" id="education">
+    <div class="container">
+        <h2 class="section__title reveal">Academic Education</h2>
+        <p class="section__subtitle reveal">Academic foundation, engineering discipline, and specialized coursework</p>
+
+        <div class="education-grid">
+            {% for edu in education_list %}
+            <div class="education-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                <div class="education-card__header">
+                    <div class="education-card__icon">🎓</div>
+                    <div class="education-card__meta">
+                        <span class="education-card__years">{{ edu.start_year }} — {{ edu.end_year }}</span>
+                        <h3 class="education-card__degree">{{ edu.degree }}</h3>
+                        <h4 class="education-card__institution">{{ edu.institution }}</h4>
+                    </div>
+                </div>
+                <div class="education-card__body">
+                    <div class="education-card__field">
+                        <strong>Major / Focus:</strong> {{ edu.field_of_study }}
+                    </div>
+                    {% if edu.grade_or_details %}
+                    <p class="education-card__details">{{ edu.grade_or_details }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== 4. Technical Skills & Stack ===== -->
 {% if skill_categories %}
 <section class="section" id="skills">
     <div class="container">
         <h2 class="section__title reveal">Technical Skills &amp; Stack</h2>
-        <p class="section__subtitle reveal">Core competencies, languages, instrumentation tools &amp; frameworks</p>
+        <p class="section__subtitle reveal">Technologies, frameworks, and engineering tools I leverage</p>
 
         <div class="skill-categories-grid">
-            {% for category, cat_skills in skill_categories.items() %}
+            {% for category_name, category_skills in skill_categories.items() %}
             <div class="skill-category-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
                 <div class="skill-category-card__header">
-                    <div class="skill-category-card__title-wrap">
-                        <div class="skill-category-card__icon-badge">
-                            {% if 'Programming' in category or 'Backend' in category or 'Languages' in category %}💻
-                            {% elif 'Security' in category or 'Binary' in category or 'Reverse' in category %}🛡️
-                            {% elif 'Tools' in category or 'Automation' in category or 'DevOps' in category %}⚙️
-                            {% elif 'Core' in category or 'Engineering' in category or 'Analysis' in category %}🧠
-                            {% else %}🚀{% endif %}
-                        </div>
-                        <h3 class="skill-category-card__title">{{ category }}</h3>
+                    <div class="skill-category-card__icon-wrap">
+                        {% if 'Backend' in category_name or 'Programming' in category_name %}💻
+                        {% elif 'Security' in category_name or 'Systems' in category_name %}🛡️
+                        {% elif 'Tools' in category_name or 'Automation' in category_name %}⚙️
+                        {% else %}📐{% endif %}
                     </div>
-                    <span class="skill-category-card__count">{{ cat_skills | length }} items</span>
+                    <h3 class="skill-category-card__title">{{ category_name }}</h3>
                 </div>
+
                 <div class="skill-chips-wrap">
-                    {% for skill in cat_skills %}
-                    <div class="skill-chip">
-                        {% if skill.icon %}
-                        <span class="skill-chip__icon">{{ skill.icon }}</span>
-                        {% endif %}
-                        <span class="skill-chip__name">{{ skill.name }}</span>
-                        {% if skill.level_tag %}
-                        <span class="skill-chip__tag">{{ skill.level_tag }}</span>
+                    {% for s in category_skills %}
+                    <div class="skill-chip" title="{{ s.name }}">
+                        {% if s.icon %}<span class="skill-chip__icon">{{ s.icon }}</span>{% endif %}
+                        <span class="skill-chip__name">{{ s.name }}</span>
+                        {% if s.level_tag %}
+                        <span class="skill-chip__tag">{{ s.level_tag }}</span>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -122,76 +180,126 @@
 </section>
 {% endif %}
 
-<!-- ===== Projects (Clean & Strong Showcase Grid) ===== -->
-<section class="section section--dark" id="projects">
+<!-- ===== 5. Work Experience & Practical Training ===== -->
+{% if experiences_list %}
+<section class="section" id="experience">
+    <div class="container">
+        <h2 class="section__title reveal">Work Experience &amp; Training</h2>
+        <p class="section__subtitle reveal">Practical research, engineering internships, and system analysis journey</p>
+
+        <div class="timeline">
+            {% for exp in experiences_list %}
+            <div class="timeline__item reveal" style="--delay: {{ loop.index0 * 0.12 }}s;">
+                <div class="timeline__marker"></div>
+                <div class="timeline__content">
+                    <div class="timeline__header">
+                        <div>
+                            <h3 class="timeline__title">{{ exp.title }}</h3>
+                            <div class="timeline__company">
+                                🏢 {{ exp.company }}
+                                {% if exp.location %}<span class="timeline__loc">📍 {{ exp.location }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <span class="timeline__badge {% if exp.is_current %}timeline__badge--current{% endif %}">
+                            {{ exp.start_date }} — {{ exp.end_date if exp.end_date else 'Present' }}
+                        </span>
+                    </div>
+                    <p class="timeline__desc">{{ exp.description }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== 6. Offered Services ===== -->
+{% if services_list %}
+<section class="section" id="services">
+    <div class="container">
+        <h2 class="section__title reveal">Services I Offer</h2>
+        <p class="section__subtitle reveal">Specialized software engineering, system analysis, and automation capabilities</p>
+
+        <div class="services-grid">
+            {% for srv in services_list %}
+            <div class="service-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                <div class="service-card__icon-box">{{ srv.icon or '⚙️' }}</div>
+                <h3 class="service-card__title">{{ srv.title }}</h3>
+                <p class="service-card__desc">{{ srv.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== 7. Featured Projects (The Heart) ===== -->
+<section class="section" id="projects">
     <div class="container">
         <h2 class="section__title reveal">Featured Projects</h2>
-        <p class="section__subtitle reveal">A selection of tools, automated pipelines &amp; systems engineering research</p>
+        <p class="section__subtitle reveal">Real-world applications, security tools, and automation pipelines</p>
 
         {% if projects %}
         <div class="projects-grid">
             {% for p in projects %}
-            <article class="card project-card reveal" style="--delay: {{ loop.index0 * 0.12 }}s;">
-                {# Project Image Banner if uploaded #}
+            <article class="project-card reveal" style="--delay: {{ loop.index0 * 0.12 }}s;">
+                {# Project Image Banner #}
                 {% if p.image %}
-                <div class="project-card__image-wrap">
+                <div class="project-card__img-wrap">
                     <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
-                         alt="{{ p.title }}" class="project-card__image">
-                    <div class="project-card__overlay"></div>
+                         alt="{{ p.title }}" class="project-card__img" loading="lazy">
                 </div>
                 {% endif %}
 
-                <div class="card__body project-card__body">
+                {# Card Header #}
+                <div class="project-card__header">
                     <div class="project-card__title-row">
-                        <div class="project-card__title-wrap">
-                            <div class="project-card__icon-box">
-                                {% if 'Reverse' in p.tech_stack or 'Security' in p.tech_stack or 'Frida' in p.tech_stack %}🔬
-                                {% elif 'CLI' in p.tech_stack or 'CSV' in p.tech_stack %}⚙️
-                                {% else %}🚀{% endif %}
-                            </div>
-                            <div>
-                                <h3 class="project-card__title">{{ p.title }}</h3>
-                                <span class="project-card__badge">
-                                    {% if 'Reverse' in p.tech_stack or 'Security' in p.tech_stack or 'Frida' in p.tech_stack %}Security &amp; Instrumentation
-                                    {% elif 'CLI' in p.tech_stack or 'CSV' in p.tech_stack %}Automation &amp; Data Pipeline
-                                    {% else %}Software System{% endif %}
-                                </span>
-                            </div>
-                        </div>
-
+                        <h3 class="project-card__title">{{ p.title }}</h3>
                         <div class="project-card__quick-links">
                             {% if p.github_link %}
-                            <a href="{{ p.github_link }}" target="_blank" rel="noopener" class="project-icon-link" title="GitHub Repository">
-                                <svg viewBox="0 0 16 16" fill="currentColor" width="18" height="18"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                            <a href="{{ p.github_link }}" target="_blank" rel="noopener" class="project-icon-link" title="Source Code">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                                </svg>
                             </a>
                             {% endif %}
                             {% if p.live_demo_link %}
                             <a href="{{ p.live_demo_link }}" target="_blank" rel="noopener" class="project-icon-link" title="Live Demo">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
                             </a>
                             {% endif %}
                         </div>
                     </div>
+                </div>
 
-                    <p class="card__desc project-card__desc">{{ p.description }}</p>
+                {# Card Body #}
+                <div class="project-card__body">
+                    <p class="project-card__desc">{{ p.description }}</p>
 
-                    <div class="card__tags project-card__tags">
+                    <div class="project-card__tech">
                         {% for tech in p.tech_stack.split(',') %}
-                        <span class="project-tag">{{ tech.strip() }}</span>
+                        <span class="tech-tag">{{ tech.strip() }}</span>
                         {% endfor %}
                     </div>
                 </div>
 
-                <div class="card__footer project-card__footer">
+                {# Card Footer #}
+                <div class="project-card__footer">
                     {% if p.github_link %}
                     <a href="{{ p.github_link }}" target="_blank" rel="noopener" class="btn btn--sm btn--primary">
-                        <svg class="icon" viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                        Source Code
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                        View Source
                     </a>
                     {% endif %}
                     {% if p.live_demo_link %}
                     <a href="{{ p.live_demo_link }}" target="_blank" rel="noopener" class="btn btn--sm btn--outline">
-                        Live Demo ↗
+                        🚀 Live Demo
                     </a>
                     {% endif %}
                     {% if p.certificate_url %}
@@ -212,14 +320,79 @@
     </div>
 </section>
 
-<!-- ===== Contact ===== -->
+<!-- ===== 8. Achievements & Certifications ===== -->
+{% if achievements_list %}
+<section class="section" id="achievements">
+    <div class="container">
+        <h2 class="section__title reveal">Achievements &amp; Certifications</h2>
+        <p class="section__subtitle reveal">Professional milestones, credentials, and competitive engineering recognitions</p>
+
+        <div class="achievements-grid">
+            {% for ach in achievements_list %}
+            <div class="achievement-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                <div class="achievement-card__icon">{{ ach.icon or '🏆' }}</div>
+                <div class="achievement-card__content">
+                    <div class="achievement-card__header-row">
+                        <h3 class="achievement-card__title">{{ ach.title }}</h3>
+                        {% if ach.date_earned %}
+                        <span class="achievement-card__date">{{ ach.date_earned }}</span>
+                        {% endif %}
+                    </div>
+                    {% if ach.issuer %}
+                    <p class="achievement-card__issuer">🏛️ {{ ach.issuer }}</p>
+                    {% endif %}
+                    {% if ach.description %}
+                    <p class="achievement-card__desc">{{ ach.description }}</p>
+                    {% endif %}
+                    {% if ach.credential_url %}
+                    <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="btn btn--sm btn--outline" style="margin-top: 8px;">
+                        🔗 Verify Credential
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== 9. Testimonials & Recommendations ===== -->
+{% if testimonials_list %}
+<section class="section" id="testimonials">
+    <div class="container">
+        <h2 class="section__title reveal">Endorsements &amp; Recommendations</h2>
+        <p class="section__subtitle reveal">Feedback from instructors, engineering mentors, and project collaborators</p>
+
+        <div class="testimonials-grid">
+            {% for t in testimonials_list %}
+            <div class="testimonial-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                <div class="testimonial-card__quote-mark">“</div>
+                <p class="testimonial-card__quote">{{ t.quote }}</p>
+                <div class="testimonial-card__author">
+                    <div class="testimonial-card__avatar">
+                        {{ t.client_name[:2].upper() }}
+                    </div>
+                    <div>
+                        <h4 class="testimonial-card__name">{{ t.client_name }}</h4>
+                        <p class="testimonial-card__role">{{ t.client_role }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== 10. Call to Action & Contact ===== -->
 <section class="section" id="contact">
     <div class="container">
         <h2 class="section__title reveal">Let's Connect</h2>
-        <p class="section__subtitle reveal">Have an idea, a project, or just want to collaborate?</p>
+        <p class="section__subtitle reveal">Have an idea, an engineering project, or want to collaborate?</p>
 
         <div class="contact-grid">
-            {# Contact Form #}
+            {# AJAX Contact Form #}
             <form class="contact-form reveal" id="contactForm" method="POST" action="{{ url_for('contact') }}">
                 <div id="formFeedback" style="display:none; margin-bottom: var(--space-md);"></div>
                 <div class="form-row">
@@ -237,19 +410,22 @@
                 <div class="form-group">
                     <label class="form-label" for="message">Message <span class="required">*</span></label>
                     <textarea class="form-input form-textarea" id="message" name="message"
-                              rows="5" placeholder="Your message..." required></textarea>
+                              rows="5" placeholder="Your message or project inquiry..." required></textarea>
                 </div>
-                <button type="submit" id="submitBtn" class="btn btn--primary">
+                <button type="submit" id="submitBtn" class="btn btn--primary btn--lg">
                     Send Message
                 </button>
             </form>
 
-            {# Social links sidebar #}
+            {# Sidebar Info & Socials #}
             <div class="contact-info reveal" style="--delay: 0.15s;">
                 {% if settings and settings.email %}
                 <a href="mailto:{{ settings.email }}" class="contact-info__item">
                     <div class="contact-info__icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
                     </div>
                     <div>
                         <span class="contact-info__label">Email</span>
@@ -258,25 +434,41 @@
                 </a>
                 {% endif %}
 
+                {% if settings and settings.github_url %}
+                <a href="{{ settings.github_url }}" target="_blank" rel="noopener" class="contact-info__item">
+                    <div class="contact-info__icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="contact-info__label">GitHub</span>
+                        <span class="contact-info__value">@AhmedBosha</span>
+                    </div>
+                </a>
+                {% endif %}
+
+                {# Social icon links #}
                 <div class="social-links">
                     {% if settings and settings.github_url %}
                     <a href="{{ settings.github_url }}" target="_blank" rel="noopener" class="social-link" title="GitHub">
-                        <svg viewBox="0 0 16 16" fill="currentColor" width="20" height="20"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
                     </a>
                     {% endif %}
                     {% if settings and settings.linkedin_url %}
                     <a href="{{ settings.linkedin_url }}" target="_blank" rel="noopener" class="social-link" title="LinkedIn">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                        </svg>
                     </a>
                     {% endif %}
                     {% if settings and settings.twitter_url %}
                     <a href="{{ settings.twitter_url }}" target="_blank" rel="noopener" class="social-link" title="Twitter / X">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                    </a>
-                    {% endif %}
-                    {% if settings and settings.resume_url %}
-                    <a href="{{ settings.resume_url }}" target="_blank" rel="noopener" class="social-link" title="Resume">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zm-5 8h8v2H8v-2zm0 4h8v2H8v-2zm0-8h3v2H8V8z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
                     </a>
                     {% endif %}
                 </div>
@@ -288,8 +480,10 @@
 <!-- ===== Footer ===== -->
 <footer class="footer">
     <div class="container footer__inner">
-        <p>&copy; 2026 {{ settings.name if settings and settings.name else 'Ahmed Bosha' }}.</p>
-        <a href="{{ url_for('admin_login') }}" class="footer__admin-link">Admin</a>
+        <p>&copy; 2026 {{ settings.name if settings and settings.name else 'Ahmed Bosha' }} &bull; Class of 2029</p>
+        <p class="footer__credit">
+            Built with Python &amp; Flask &bull; <a href="{{ url_for('admin_dashboard') }}" class="footer__admin-link">Admin CMS</a>
+        </p>
     </div>
 </footer>
 {% endblock %}
@@ -297,24 +491,22 @@
 {% block extra_js %}
 <script>
 /* ==========================================================
-   1. THEME SWITCHER (Dark / Light Mode)
+   1. THEME SWITCHER (DARK / LIGHT)
    ========================================================== */
 (function() {
     const toggleBtn = document.getElementById('themeToggle');
     if (!toggleBtn) return;
 
-    toggleBtn.addEventListener('click', function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', nextTheme);
-        try {
-            localStorage.setItem('portfolio_theme', nextTheme);
-        } catch (e) {}
+    toggleBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('portfolio-theme', next);
     });
 })();
 
 /* ==========================================================
-   2. SCROLL REVEAL — IntersectionObserver
+   2. SCROLL REVEAL (INTERSECTION OBSERVER)
    ========================================================== */
 (function() {
     const reveals = document.querySelectorAll('.reveal');
@@ -327,23 +519,32 @@
                 observer.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    }, {
+        threshold: 0.12,
+        rootMargin: '0px 0px -40px 0px'
+    });
 
     reveals.forEach(el => observer.observe(el));
 })();
 
 /* ==========================================================
-   3. TYPING EFFECT
+   3. HERO LIVE TYPING EFFECT
    ========================================================== */
 (function() {
-    const el = document.getElementById('typing-text');
-    if (!el) return;
+    const el = document.getElementById('typedText');
+    const dataEl = document.getElementById('typingData');
+    if (!el || !dataEl) return;
 
-    const raw = {{ (settings.typing_texts if settings and settings.typing_texts else 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast') | tojson }};
+    const raw = dataEl.getAttribute('data-phrases') || '';
     const texts = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (!texts.length) return;
+    if (!texts.length) {
+        el.textContent = 'Engineering Student & Developer';
+        return;
+    }
 
-    let textIdx = 0, charIdx = 0, isDeleting = false;
+    let textIdx = 0;
+    let charIdx = 0;
+    let isDeleting = false;
 
     function type() {
         const current = texts[textIdx];
@@ -370,7 +571,7 @@
 })();
 
 /* ==========================================================
-   4. AJAX CONTACT FORM (NO PAGE REFRESH)
+   4. AJAX CONTACT FORM
    ========================================================== */
 (function() {
     const form = document.getElementById('contactForm');

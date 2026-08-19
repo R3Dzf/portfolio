@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Education — Admin{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <div class="container admin-nav__inner">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">Dashboard</a>
+        <div class="admin-nav__actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">Projects</a>
+            <a href="{{ url_for('admin_skills') }}" class="btn btn--sm btn--outline">Skills</a>
+            <a href="{{ url_for('admin_experience') }}" class="btn btn--sm btn--outline">Experience</a>
+            <a href="{{ url_for('admin_education') }}" class="btn btn--sm btn--primary">Education</a>
+            <a href="{{ url_for('admin_services') }}" class="btn btn--sm btn--outline">Services</a>
+            <a href="{{ url_for('admin_achievements') }}" class="btn btn--sm btn--outline">Achievements</a>
+            <a href="{{ url_for('admin_testimonials') }}" class="btn btn--sm btn--outline">Testimonials</a>
+            <a href="{{ url_for('admin_messages') }}" class="btn btn--sm btn--outline">
+                Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline">Settings</a>
+            <a href="{{ url_for('index') }}" class="btn btn--sm btn--outline">View Site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container" style="max-width:960px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">Academic Education</h1>
+                <p class="admin-header__subtitle">{{ education_list | length }} education record{{ 's' if education_list | length != 1 }}</p>
+            </div>
+        </div>
+
+        <!-- Add Education Form -->
+        <div class="form-card" style="margin-bottom: var(--space-lg);">
+            <h3 style="margin-bottom: var(--space-md); font-size: 1.1rem; font-weight: 700;">+ Add Education Entry</h3>
+            <form method="POST" action="{{ url_for('admin_add_education') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="inst">Institution / University <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="inst" name="institution" placeholder="e.g. Faculty of Engineering" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="deg">Degree / Title <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="deg" name="degree" placeholder="e.g. Bachelor of Engineering" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="field">Major / Field of Study <span class="required">*</span></label>
+                        <input class="form-input" type="text" id="field" name="field_of_study" placeholder="e.g. Computer & Systems Engineering" required>
+                    </div>
+                    <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 8px;">
+                        <div>
+                            <label class="form-label" for="s_yr">Start Year</label>
+                            <input class="form-input" type="text" id="s_yr" name="start_year" placeholder="2024" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="e_yr">End / Expected</label>
+                            <input class="form-input" type="text" id="e_yr" name="end_year" placeholder="2029" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="s_ord">Order</label>
+                            <input class="form-input" type="number" id="s_ord" name="sort_order" value="{{ (education_list | length) + 1 }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="details">Additional Notes / Honors / Details</label>
+                    <textarea class="form-input form-textarea" id="details" name="grade_or_details" rows="2" placeholder="Class of 2029. Focus areas, thesis, or academic milestones..."></textarea>
+                </div>
+                <button type="submit" class="btn btn--primary">Add Education</button>
+            </form>
+        </div>
+
+        <!-- Existing Education Records -->
+        {% if education_list %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">#</th>
+                        <th>Institution &amp; Degree</th>
+                        <th>Years</th>
+                        <th>Details</th>
+                        <th style="width: 140px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in education_list %}
+                    <tr>
+                        <td class="cell-id">{{ loop.index }}</td>
+                        <td>
+                            <form id="edit-edu-{{ item.id }}" method="POST" action="{{ url_for('admin_edit_education', item_id=item.id) }}">
+                                <input class="form-input form-input--sm" type="text" name="institution" value="{{ item.institution }}" required style="margin-bottom: 4px;">
+                                <input class="form-input form-input--sm" type="text" name="degree" value="{{ item.degree }}" placeholder="Degree" required style="margin-bottom: 4px;">
+                                <input class="form-input form-input--sm" type="text" name="field_of_study" value="{{ item.field_of_study }}" placeholder="Field">
+                        </td>
+                        <td>
+                                <input class="form-input form-input--sm" type="text" name="start_year" value="{{ item.start_year }}" placeholder="Start" style="margin-bottom: 4px; width: 90px;">
+                                <input class="form-input form-input--sm" type="text" name="end_year" value="{{ item.end_year }}" placeholder="End" style="width: 90px;">
+                                <input type="hidden" name="sort_order" value="{{ item.sort_order }}">
+                        </td>
+                        <td>
+                                <textarea class="form-input form-input--sm" name="grade_or_details" rows="2" placeholder="Details">{{ item.grade_or_details or '' }}</textarea>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <button type="submit" form="edit-edu-{{ item.id }}" class="btn btn--sm btn--outline">Save</button>
+                                <form method="POST" action="{{ url_for('admin_delete_education', item_id=item.id) }}"
+                                      style="display:inline;" onsubmit="return confirm('Delete this education entry?');">
+                                    <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No education records added yet. Add your university / degree above!</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
