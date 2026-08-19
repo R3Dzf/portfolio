@@ -139,11 +139,35 @@
                 <!-- ============================== -->
                 <!-- SECTION 4: Theme Colors        -->
                 <!-- ============================== -->
-                <p class="form-section-label" style="margin-top: 2rem;">4. Visual Branding &amp; Palette</p>
+                <p class="form-section-label" style="margin-top: 2.25rem;">4. Visual Branding &amp; Color Palette</p>
+                <p class="form-hint" style="margin-top: -0.5rem; margin-bottom: 1rem;">
+                    These colors dictate the visual identity of your portfolio in Dark &amp; Light mode across all buttons, cards, gradients, and badges.
+                </p>
+
+                <!-- Quick Presets -->
+                <div style="margin-bottom: 1.25rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--clr-text-muted);">Quick Presets:</span>
+                    <button type="button" class="btn btn--sm btn--outline" onclick="applyPreset('#6c63ff', '#ff6b6b', '#0c0c12', '#161622', '#f0f0f8')">
+                        🟣 Indigo Violet (Default)
+                    </button>
+                    <button type="button" class="btn btn--sm btn--outline" onclick="applyPreset('#00f2fe', '#4facfe', '#060d16', '#0d1a2d', '#f0f6fc')">
+                        🔷 Cyan Cyberpunk
+                    </button>
+                    <button type="button" class="btn btn--sm btn--outline" onclick="applyPreset('#10b981', '#f59e0b', '#06130d', '#0d2218', '#f0fdf4')">
+                        🟢 Emerald Tech
+                    </button>
+                    <button type="button" class="btn btn--sm btn--outline" onclick="applyPreset('#ff4757', '#ffa502', '#12080a', '#1e0f12', '#fff1f2')">
+                        🔴 Crimson Hacker
+                    </button>
+                    <button type="button" class="btn btn--sm btn--outline" onclick="applyPreset('#f59e0b', '#3b82f6', '#140f06', '#221a0d', '#fffbeb')">
+                        🟡 Golden Amber
+                    </button>
+                </div>
 
                 <div class="color-grid">
                     <div class="color-field">
-                        <label class="form-label">Primary Brand</label>
+                        <label class="form-label">Primary Brand Color</label>
+                        <p class="form-hint" style="margin-bottom: 6px;">Buttons, badges, highlights &amp; glows</p>
                         <div class="color-input-wrap">
                             <input type="color" class="color-swatch" id="color_primary_swatch"
                                    value="{{ settings.color_primary or '#6c63ff' }}"
@@ -156,6 +180,7 @@
 
                     <div class="color-field">
                         <label class="form-label">Accent Highlight</label>
+                        <p class="form-hint" style="margin-bottom: 6px;">Alerts, typing words &amp; tags</p>
                         <div class="color-input-wrap">
                             <input type="color" class="color-swatch" id="color_accent_swatch"
                                    value="{{ settings.color_accent or '#ff6b6b' }}"
@@ -167,7 +192,8 @@
                     </div>
 
                     <div class="color-field">
-                        <label class="form-label">Dark Background</label>
+                        <label class="form-label">Dark Canvas BG</label>
+                        <p class="form-hint" style="margin-bottom: 6px;">Overall dark mode background</p>
                         <div class="color-input-wrap">
                             <input type="color" class="color-swatch" id="color_bg_swatch"
                                    value="{{ settings.color_bg or '#0c0c12' }}"
@@ -179,7 +205,8 @@
                     </div>
 
                     <div class="color-field">
-                        <label class="form-label">Dark Surface</label>
+                        <label class="form-label">Dark Card &amp; Surface</label>
+                        <p class="form-hint" style="margin-bottom: 6px;">Projects, forms &amp; admin cards</p>
                         <div class="color-input-wrap">
                             <input type="color" class="color-swatch" id="color_surface_swatch"
                                    value="{{ settings.color_surface or '#161622' }}"
@@ -189,12 +216,25 @@
                                    oninput="document.getElementById('color_surface_swatch').value = this.value">
                         </div>
                     </div>
+
+                    <div class="color-field">
+                        <label class="form-label">Dark Mode Text</label>
+                        <p class="form-hint" style="margin-bottom: 6px;">Headlines &amp; primary typography</p>
+                        <div class="color-input-wrap">
+                            <input type="color" class="color-swatch" id="color_text_swatch"
+                                   value="{{ settings.color_text or '#f0f0f8' }}"
+                                   oninput="document.getElementById('color_text').value = this.value">
+                            <input class="form-input form-input--color" type="text" id="color_text" name="color_text"
+                                   value="{{ settings.color_text or '#f0f0f8' }}"
+                                   oninput="document.getElementById('color_text_swatch').value = this.value">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ============================== -->
                 <!-- SECTION 5: Admin Security      -->
                 <!-- ============================== -->
-                <p class="form-section-label" style="margin-top: 2rem;">5. Admin Login &amp; Security</p>
+                <p class="form-section-label" style="margin-top: 2.25rem;">5. Admin Login &amp; Security</p>
 
                 <div class="form-row">
                     <div class="form-group">
@@ -221,4 +261,25 @@
         </div>
     </div>
 </main>
+
+<script>
+function applyPreset(primary, accent, bg, surface, text) {
+    document.getElementById('color_primary').value = primary;
+    document.getElementById('color_primary_swatch').value = primary;
+
+    document.getElementById('color_accent').value = accent;
+    document.getElementById('color_accent_swatch').value = accent;
+
+    document.getElementById('color_bg').value = bg;
+    document.getElementById('color_bg_swatch').value = bg;
+
+    document.getElementById('color_surface').value = surface;
+    document.getElementById('color_surface_swatch').value = surface;
+
+    if (document.getElementById('color_text')) {
+        document.getElementById('color_text').value = text;
+        document.getElementById('color_text_swatch').value = text;
+    }
+}
+</script>
 {% endblock %}

@@ -25,20 +25,41 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
-    {# ===== Dynamic theme color overrides from admin settings (applied to active theme) ===== #}
-    {% if settings and settings.color_primary %}
+    {# ===== Dynamic theme color overrides from admin settings ===== #}
+    {% if settings %}
     <style>
+        :root {
+            {% if settings.color_primary %}
+            --clr-primary: {{ settings.color_primary }};
+            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 82%, black);
+            --clr-primary-glow: color-mix(in srgb, {{ settings.color_primary }} 30%, transparent);
+            {% endif %}
+            {% if settings.color_accent %}
+            --clr-accent: {{ settings.color_accent }};
+            {% endif %}
+        }
         [data-theme="dark"] {
-            --clr-primary:      {{ settings.color_primary }};
-            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 85%, black);
-            --clr-accent:       {{ settings.color_accent or '#ff6b6b' }};
-            {% if settings.color_bg %}--clr-bg: {{ settings.color_bg }};{% endif %}
-            {% if settings.color_surface %}--clr-surface: {{ settings.color_surface }};{% endif %}
-            {% if settings.color_text %}--clr-text: {{ settings.color_text }};{% endif %}
+            {% if settings.color_bg %}
+            --clr-bg: {{ settings.color_bg }};
+            --clr-hero-radial-1: color-mix(in srgb, {{ settings.color_primary or '#6c63ff' }} 20%, transparent);
+            {% endif %}
+            {% if settings.color_surface %}
+            --clr-surface: {{ settings.color_surface }};
+            --clr-card-bg: {{ settings.color_surface }};
+            --clr-surface-2: color-mix(in srgb, {{ settings.color_surface }} 85%, white 15%);
+            --clr-border: color-mix(in srgb, {{ settings.color_surface }} 65%, white 35%);
+            {% endif %}
+            {% if settings.color_text %}
+            --clr-text: {{ settings.color_text }};
+            --clr-text-muted: color-mix(in srgb, {{ settings.color_text }} 65%, var(--clr-bg));
+            {% endif %}
         }
         [data-theme="light"] {
-            --clr-primary:      {{ settings.color_primary }};
-            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 85%, black);
+            {% if settings.color_primary %}
+            --clr-primary: {{ settings.color_primary }};
+            --clr-primary-hover: color-mix(in srgb, {{ settings.color_primary }} 82%, black);
+            --clr-primary-glow: color-mix(in srgb, {{ settings.color_primary }} 20%, transparent);
+            {% endif %}
         }
     </style>
     {% endif %}
