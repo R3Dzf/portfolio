@@ -305,6 +305,8 @@ def init_db():
             issuer          TEXT,
             date_earned     TEXT,
             credential_url  TEXT,
+            credential_id   TEXT,
+            image           TEXT,
             icon            TEXT    DEFAULT '🏆',
             description     TEXT,
             sort_order      INTEGER DEFAULT 0
@@ -343,6 +345,14 @@ def init_db():
     for col, definition in needed_cols:
         if col not in existing_cols:
             cursor.execute(f"ALTER TABLE site_settings ADD COLUMN {col} {definition}")
+
+    # Check achievements table columns
+    cursor.execute("PRAGMA table_info(achievements)")
+    ach_cols = [row[1] for row in cursor.fetchall()]
+    if "credential_id" not in ach_cols:
+        cursor.execute("ALTER TABLE achievements ADD COLUMN credential_id TEXT")
+    if "image" not in ach_cols:
+        cursor.execute("ALTER TABLE achievements ADD COLUMN image TEXT")
     db.commit()
 
     # ---- 1. Seed site_settings ----
@@ -1160,9 +1170,16 @@ def admin_add_achievement():
     issuer = request.form.get("issuer", "").strip() or None
     date_earned = request.form.get("date_earned", "").strip() or None
     credential_url = request.form.get("credential_url", "").strip() or None
+    credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
     sort_order = int(request.form.get("sort_order", 0) or 0)
+
+    image_filename = None
+    if "image" in request.files:
+        file = request.files["image"]
+        if file and file.filename and allowed_file(file.filename):
+            image_filename = save_upload(file, "certificate")
 
     if not title:
         flash("Achievement Title is required.", "danger")
@@ -1170,9 +1187,9 @@ def admin_add_achievement():
 
     db = get_db()
     db.execute(
-        """INSERT INTO achievements (title, issuer, date_earned, credential_url, icon, description, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (title, issuer, date_earned, credential_url, icon, description, sort_order),
+        """INSERT INTO achievements (title, issuer, date_earned, credential_url, credential_id, image, icon, description, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order),
     )
     db.commit()
     flash(f'Achievement "{title}" added!', "success")
@@ -1182,23 +1199,40 @@ def admin_add_achievement():
 @app.route("/admin/achievements/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_achievement(item_id):
+    db = get_db()
+    current = db.execute("SELECT * FROM achievements WHERE id = ?", (item_id,)).fetchone()
+    if not current:
+        flash("Achievement not found.", "danger")
+        return redirect(url_for("admin_achievements"))
+
     title = request.form.get("title", "").strip()
     issuer = request.form.get("issuer", "").strip() or None
     date_earned = request.form.get("date_earned", "").strip() or None
     credential_url = request.form.get("credential_url", "").strip() or None
+    credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
     sort_order = int(request.form.get("sort_order", 0) or 0)
+
+    image_filename = current["image"]
+    if "image" in request.files:
+        file = request.files["image"]
+        if file and file.filename and allowed_file(file.filename):
+            delete_upload(image_filename)
+            image_filename = save_upload(file, "certificate")
+    if request.form.get("remove_image") == "1":
+        delete_upload(image_filename)
+        image_filename = None
 
     if not title:
         flash("Achievement Title is required.", "danger")
         return redirect(url_for("admin_achievements"))
 
-    db = get_db()
     db.execute(
-        """UPDATE achievements SET title=?, issuer=?, date_earned=?, credential_url=?, icon=?, description=?, sort_order=?
+        """UPDATE achievements SET
+            title=?, issuer=?, date_earned=?, credential_url=?, credential_id=?, image=?, icon=?, description=?, sort_order=?
            WHERE id=?""",
-        (title, issuer, date_earned, credential_url, icon, description, sort_order, item_id),
+        (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order, item_id),
     )
     db.commit()
     flash(f'Achievement "{title}" updated!', "success")
@@ -1209,6 +1243,9 @@ def admin_edit_achievement(item_id):
 @login_required
 def admin_delete_achievement(item_id):
     db = get_db()
+    current = db.execute("SELECT image FROM achievements WHERE id = ?", (item_id,)).fetchone()
+    if current and current["image"]:
+        delete_upload(current["image"])
     db.execute("DELETE FROM achievements WHERE id = ?", (item_id,))
     db.commit()
     flash("Achievement deleted.", "info")

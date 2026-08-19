@@ -17,22 +17,33 @@
         <!-- Add Achievement Form -->
         <div class="form-card" style="margin-bottom: var(--space-lg);">
             <h3 style="margin-bottom: var(--space-md); font-size: 1.15rem; font-weight: 700;">+ Add Achievement or Certificate</h3>
-            <form method="POST" action="{{ url_for('admin_add_achievement') }}">
+            <form method="POST" action="{{ url_for('admin_add_achievement') }}" enctype="multipart/form-data">
                 <div class="form-row">
                     <div class="form-group" style="flex: 2;">
-                        <label class="form-label" for="ach_title">Title <span class="required">*</span></label>
+                        <label class="form-label" for="ach_title">Certificate / Achievement Title <span class="required">*</span></label>
                         <input class="form-input" type="text" id="ach_title" name="title" placeholder="e.g. NTI Software Engineering &amp; Foundations" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="issuer">Issuer / Organization</label>
-                        <input class="form-input" type="text" id="issuer" name="issuer" placeholder="e.g. NTI / HackerRank">
+                        <input class="form-input" type="text" id="issuer" name="issuer" placeholder="e.g. National Telecommunication Institute (NTI)">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" for="cred_url">Credential URL / Verification Link</label>
-                        <input class="form-input" type="url" id="cred_url" name="credential_url" placeholder="https://...">
+                        <label class="form-label" for="cred_id">Credential ID / Serial Code (Optional)</label>
+                        <input class="form-input" type="text" id="cred_id" name="credential_id" placeholder="e.g. NTI-2025-SE-4921 / HR-PY-9842">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cred_url">Verification URL / Online Link</label>
+                        <input class="form-input" type="url" id="cred_url" name="credential_url" placeholder="https://nti.sci.eg/verify/...">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label" for="ach_img">Upload Certificate Image / Badge (Optional)</label>
+                        <input class="form-input" type="file" id="ach_img" name="image" accept="image/*">
                     </div>
                     <div class="form-group" style="display: grid; grid-template-columns: 1fr 60px 60px; gap: 8px;">
                         <div>
@@ -51,8 +62,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="ach_desc">Description / Details</label>
-                    <textarea class="form-input form-textarea" id="ach_desc" name="description" rows="2" placeholder="Brief context about this achievement or certificate..."></textarea>
+                    <label class="form-label" for="ach_desc">Description / Honors &amp; Details</label>
+                    <textarea class="form-input form-textarea" id="ach_desc" name="description" rows="2" placeholder="Brief details, score, or honors associated with this credential..."></textarea>
                 </div>
 
                 <button type="submit" class="btn btn--primary">Add Achievement</button>
@@ -66,14 +77,23 @@
             <div class="admin-item-card" id="card-ach-{{ ach.id }}">
                 <div class="admin-item-card__header">
                     <div class="admin-item-card__info">
+                        {% if ach.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + ach.image) }}"
+                             alt="{{ ach.title }}" style="width: 54px; height: 54px; border-radius: 10px; object-fit: cover; border: 1px solid var(--clr-border);">
+                        {% else %}
                         <div class="admin-item-card__icon">{{ ach.icon or '🏆' }}</div>
+                        {% endif %}
                         <div>
                             <h4 class="admin-item-card__title">{{ ach.title }}</h4>
                             <div class="admin-item-card__meta">
                                 {% if ach.issuer %}<span>🏛️ {{ ach.issuer }}</span>{% endif %}
                                 {% if ach.date_earned %}<span class="admin-item-card__meta-tag">📅 {{ ach.date_earned }}</span>{% endif %}
+                                {% if ach.credential_id %}<span class="link-badge" style="font-family: var(--ff-mono);">ID: {{ ach.credential_id }}</span>{% endif %}
                                 {% if ach.credential_url %}
-                                <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="link-badge link-badge--blue">↗ View Link</a>
+                                <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="link-badge link-badge--blue">↗ Verify Link</a>
+                                {% endif %}
+                                {% if ach.image %}
+                                <a href="{{ url_for('static', filename='uploads/' + ach.image) }}" target="_blank" class="link-badge link-badge--gold">🖼️ Image</a>
                                 {% endif %}
                             </div>
                         </div>
@@ -95,7 +115,7 @@
 
                 <!-- Inline Clean Edit Drawer -->
                 <div class="admin-item-card__edit-form" id="edit-ach-{{ ach.id }}">
-                    <form method="POST" action="{{ url_for('admin_edit_achievement', item_id=ach.id) }}">
+                    <form method="POST" action="{{ url_for('admin_edit_achievement', item_id=ach.id) }}" enctype="multipart/form-data">
                         <div class="form-row">
                             <div class="form-group" style="flex: 2;">
                                 <label class="form-label">Title <span class="required">*</span></label>
@@ -108,8 +128,26 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Credential Link</label>
+                                <label class="form-label">Credential ID</label>
+                                <input class="form-input" type="text" name="credential_id" value="{{ ach.credential_id or '' }}" placeholder="Serial / ID">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Verification URL</label>
                                 <input class="form-input" type="url" name="credential_url" value="{{ ach.credential_url or '' }}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label class="form-label">Change Certificate Image</label>
+                                <input class="form-input" type="file" name="image" accept="image/*">
+                                {% if ach.image %}
+                                <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.8rem; color: var(--clr-text-muted);">Current: {{ ach.image }}</span>
+                                    <label style="font-size: 0.8rem; color: var(--clr-accent); cursor: pointer;">
+                                        <input type="checkbox" name="remove_image" value="1"> Remove Image
+                                    </label>
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="form-group" style="display: grid; grid-template-columns: 1fr 60px 60px; gap: 8px;">
                                 <div>

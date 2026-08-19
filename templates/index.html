@@ -242,20 +242,44 @@
         <p class="section__subtitle reveal">Real-world applications, security tools, and automation pipelines</p>
 
         {% if projects %}
-        <div class="projects-grid">
+        <!-- Interactive Category Filters -->
+        <div class="project-filters reveal">
+            <button type="button" class="project-filter-btn active" data-filter="all">
+                All Projects <span class="filter-count">({{ projects | length }})</span>
+            </button>
+            {% set tech_set = [] %}
             {% for p in projects %}
-            <article class="project-card reveal" style="--delay: {{ loop.index0 * 0.12 }}s;">
-                {# Optional Project Image #}
+                {% for t in p.tech_stack.split(',') %}
+                    {% set clean_t = t.strip() %}
+                    {% if clean_t and clean_t not in tech_set and tech_set | length < 6 %}
+                        {% set _ = tech_set.append(clean_t) %}
+                        <button type="button" class="project-filter-btn" data-filter="{{ clean_t | lower }}">
+                            {{ clean_t }}
+                        </button>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="projects-grid" id="projectsGrid">
+            {% for p in projects %}
+            <article class="project-card reveal"
+                     data-tags="{{ p.tech_stack | lower }} {{ p.title | lower }}"
+                     style="--delay: {{ loop.index0 * 0.12 }}s;">
+                {# Optional Project Image with Quick View Overlay #}
                 {% if p.image %}
-                <div class="project-card__img-wrap">
+                <div class="project-card__img-wrap" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details &amp; screenshots">
                     <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
                          alt="{{ p.title }}" class="project-card__img" loading="lazy">
+                    <div class="project-card__img-overlay">
+                        <span class="project-card__quick-view">🔍 Quick View</span>
+                    </div>
                 </div>
                 {% endif %}
 
                 <div class="project-card__body">
                     <div class="project-card__top">
-                        <div class="project-card__title-wrap">
+                        <div class="project-card__title-wrap" onclick="openProjectModal({{ loop.index0 }})" style="cursor: pointer;">
                             <span class="project-card__folder-icon">📁</span>
                             <h3 class="project-card__title">{{ p.title }}</h3>
                         </div>
@@ -272,7 +296,7 @@
 
                     <div class="project-card__tech-wrap">
                         {% for tech in p.tech_stack.split(',') %}
-                        <span class="project-tech-pill">{{ tech.strip() }}</span>
+                        <span class="project-tech-pill" onclick="filterByTech('{{ tech.strip() | lower }}')">{{ tech.strip() }}</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -282,27 +306,53 @@
                     <a href="{{ p.github_link }}" target="_blank" rel="noopener" class="btn btn--sm btn--primary">
                         <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-                        </svg>
-                        View Source
-                    </a>
-                    {% endif %}
-                    {% if p.live_demo_link %}
-                    <a href="{{ p.live_demo_link }}" target="_blank" rel="noopener" class="btn btn--sm btn--outline">
-                        🚀 Live Demo
-                    </a>
-                    {% endif %}
-                    {% if p.certificate_url %}
-                    <a href="{{ p.certificate_url }}" target="_blank" rel="noopener" class="btn btn--sm btn--dark">
-                        🏆 Certificate
-                    </a>
-                    {% endif %}
-                    {% if not p.github_link and not p.live_demo_link and not p.certificate_url %}
-                    <span class="card__no-links">Internal Research / Private</span>
-                    {% endif %}
-                </div>
-            </article>
+                            </svg>
+                            View Source
+                        </a>
+                        {% endif %}
+                        {% if p.live_demo_link %}
+                        <a href="{{ p.live_demo_link }}" target="_blank" rel="noopener" class="btn btn--sm btn--outline">
+                            🚀 Live Demo
+                        </a>
+                        {% endif %}
+                        {% if p.certificate_url %}
+                        <a href="{{ p.certificate_url }}" target="_blank" rel="noopener" class="btn btn--sm btn--dark">
+                            🏆 Certificate
+                        </a>
+                        {% endif %}
+                        <button type="button" class="btn btn--sm btn--outline" onclick="openProjectModal({{ loop.index0 }})">
+                            Details
+                        </button>
+                    </div>
+                </article>
             {% endfor %}
         </div>
+
+        <!-- Project Details Modal / Lightbox -->
+        <div id="projectModal" class="project-modal" aria-hidden="true">
+            <div class="project-modal__backdrop" onclick="closeProjectModal()"></div>
+            <div class="project-modal__dialog">
+                <button class="project-modal__close" onclick="closeProjectModal()" aria-label="Close modal">&times;</button>
+                <div id="projectModalContent"></div>
+            </div>
+        </div>
+
+        {# Pass project data as JSON for modal lightbox #}
+        <script id="projectsData" type="application/json">
+            [
+                {% for p in projects %}
+                {
+                    "title": {{ p.title | tojson }},
+                    "description": {{ p.description | tojson }},
+                    "tech_stack": {{ p.tech_stack | tojson }},
+                    "image": {% if p.image %}{{ url_for('static', filename='uploads/' + p.image) | tojson }}{% else %}null{% endif %},
+                    "github_link": {% if p.github_link %}{{ p.github_link | tojson }}{% else %}null{% endif %},
+                    "live_demo_link": {% if p.live_demo_link %}{{ p.live_demo_link | tojson }}{% else %}null{% endif %},
+                    "certificate_url": {% if p.certificate_url %}{{ p.certificate_url | tojson }}{% else %}null{% endif %}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
+        </script>
         {% else %}
         <p class="empty-state">No projects yet -- check back soon!</p>
         {% endif %}
@@ -319,7 +369,17 @@
         <div class="achievements-grid">
             {% for ach in achievements_list %}
             <div class="achievement-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
+                {# Certificate Thumbnail / Icon #}
+                {% if ach.image %}
+                <div class="achievement-card__img-wrap" onclick="openCertModal('{{ url_for('static', filename='uploads/' + ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')" title="Click to view full certificate">
+                    <img src="{{ url_for('static', filename='uploads/' + ach.image) }}"
+                         alt="{{ ach.title }}" class="achievement-card__img" loading="lazy">
+                    <span class="achievement-card__zoom-hint">🔍 View</span>
+                </div>
+                {% else %}
                 <div class="achievement-card__icon">{{ ach.icon or '🏆' }}</div>
+                {% endif %}
+
                 <div class="achievement-card__content">
                     <div class="achievement-card__header-row">
                         <h3 class="achievement-card__title">{{ ach.title }}</h3>
@@ -330,14 +390,33 @@
                     {% if ach.issuer %}
                     <p class="achievement-card__issuer">🏛️ {{ ach.issuer }}</p>
                     {% endif %}
+
+                    {% if ach.credential_id %}
+                    <div class="achievement-card__cred-id">
+                        <span class="cred-label">Credential ID:</span>
+                        <code class="cred-code">{{ ach.credential_id }}</code>
+                        <button type="button" class="cred-copy-btn" onclick="copyCredId('{{ ach.credential_id }}', this)" title="Copy Credential ID">
+                            📋
+                        </button>
+                    </div>
+                    {% endif %}
+
                     {% if ach.description %}
                     <p class="achievement-card__desc">{{ ach.description }}</p>
                     {% endif %}
-                    {% if ach.credential_url %}
-                    <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="btn btn--sm btn--outline" style="margin-top: 8px;">
-                        🔗 Verify Credential
-                    </a>
-                    {% endif %}
+
+                    <div class="achievement-card__actions">
+                        {% if ach.credential_url %}
+                        <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="btn btn--sm btn--primary">
+                            🔗 Verify Online
+                        </a>
+                        {% endif %}
+                        {% if ach.image %}
+                        <button type="button" class="btn btn--sm btn--outline" onclick="openCertModal('{{ url_for('static', filename='uploads/' + ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')">
+                            📜 View Certificate
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -636,5 +715,198 @@
         }
     });
 })();
+
+/* ==========================================================
+   6. INTERACTIVE PROJECT FILTER TABS & LIGHTBOX MODAL
+   ========================================================== */
+let allProjectsData = [];
+try {
+    const pDataEl = document.getElementById('projectsData');
+    if (pDataEl) allProjectsData = JSON.parse(pDataEl.textContent);
+} catch (e) {
+    console.warn('Projects data parse error', e);
+}
+
+// Filter tabs
+document.querySelectorAll('.project-filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.project-filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const filter = this.getAttribute('data-filter');
+        filterProjects(filter);
+    });
+});
+
+function filterProjects(filter) {
+    const cards = document.querySelectorAll('#projectsGrid .project-card');
+    cards.forEach(card => {
+        const tags = (card.getAttribute('data-tags') || '').toLowerCase();
+        if (filter === 'all' || tags.includes(filter.toLowerCase())) {
+            card.style.display = 'flex';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.96)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+            }, 30);
+        } else {
+            card.style.transition = 'all 0.2s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.94)';
+            setTimeout(() => {
+                card.style.display = 'none';
+            }, 200);
+        }
+    });
+}
+
+function filterByTech(tech) {
+    const targetBtn = Array.from(document.querySelectorAll('.project-filter-btn'))
+        .find(b => b.getAttribute('data-filter') === tech.toLowerCase());
+    if (targetBtn) {
+        targetBtn.click();
+    } else {
+        filterProjects(tech);
+    }
+    const sec = document.getElementById('projects');
+    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Modal Lightbox
+function openProjectModal(index) {
+    const p = allProjectsData[index];
+    if (!p) return;
+
+    const modal = document.getElementById('projectModal');
+    const content = document.getElementById('projectModalContent');
+    if (!modal || !content) return;
+
+    let imgHtml = '';
+    if (p.image) {
+        imgHtml = `
+            <div class="project-modal__img-wrap">
+                <img src="${p.image}" alt="${p.title}" class="project-modal__img">
+            </div>
+        `;
+    }
+
+    let tagsHtml = '';
+    if (p.tech_stack) {
+        tagsHtml = p.tech_stack.split(',').map(t => `<span class="project-tech-pill">${t.trim()}</span>`).join('');
+    }
+
+    let actionsHtml = '';
+    if (p.github_link) {
+        actionsHtml += `
+            <a href="${p.github_link}" target="_blank" rel="noopener" class="btn btn--primary">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                View Source Code
+            </a>
+        `;
+    }
+    if (p.live_demo_link) {
+        actionsHtml += `
+            <a href="${p.live_demo_link}" target="_blank" rel="noopener" class="btn btn--outline">
+                🚀 Live Demo
+            </a>
+        `;
+    }
+    if (p.certificate_url) {
+        actionsHtml += `
+            <a href="${p.certificate_url}" target="_blank" rel="noopener" class="btn btn--dark">
+                🏆 Verification / Cert
+            </a>
+        `;
+    }
+
+    content.innerHTML = `
+        ${imgHtml}
+        <div class="project-modal__body">
+            <div class="project-modal__title-row">
+                <span style="font-size: 1.5rem;">📁</span>
+                <h2 class="project-modal__title">${p.title}</h2>
+            </div>
+            <p class="project-modal__desc">${p.description}</p>
+            <div class="project-card__tech-wrap" style="margin: 1.25rem 0;">
+                ${tagsHtml}
+            </div>
+            <div class="project-modal__actions">
+                ${actionsHtml}
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeProjectModal() {
+    const modal = document.getElementById('projectModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+// Certificate Lightbox Preview Modal
+function openCertModal(imgSrc, title, issuer) {
+    const modal = document.getElementById('projectModal');
+    const content = document.getElementById('projectModalContent');
+    if (!modal || !content) return;
+
+    content.innerHTML = `
+        <div class="project-modal__img-wrap" style="height: auto; max-height: 520px; background: #000; text-align: center;">
+            <img src="${imgSrc}" alt="${title}" style="max-height: 500px; width: auto; max-width: 100%; object-fit: contain; margin: 0 auto; display: block;">
+        </div>
+        <div class="project-modal__body">
+            <div class="project-modal__title-row">
+                <span style="font-size: 1.5rem;">📜</span>
+                <div>
+                    <h2 class="project-modal__title" style="font-size: 1.4rem;">${title}</h2>
+                    ${issuer ? `<p style="color: var(--clr-primary); font-size: 0.9rem; font-weight: 600; margin-top: 2px;">🏛️ ${issuer}</p>` : ''}
+                </div>
+            </div>
+            <div class="project-modal__actions" style="margin-top: 1rem; padding-top: 1rem;">
+                <a href="${imgSrc}" target="_blank" download class="btn btn--primary">
+                    📥 Download High-Res
+                </a>
+                <button type="button" class="btn btn--outline" onclick="closeProjectModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+// 1-Click Credential ID Copy to Clipboard
+function copyCredId(text, btn) {
+    if (!navigator.clipboard) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    } else {
+        navigator.clipboard.writeText(text);
+    }
+    const origText = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.innerHTML = origText;
+        btn.classList.remove('copied');
+    }, 2500);
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeProjectModal();
+});
 </script>
 {% endblock %}
