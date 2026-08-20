@@ -1097,7 +1097,8 @@ def admin_login():
                 return render_template("admin/login.html")
 
             # Check if user has pending verification
-            if user["account_status"] == "pending" or (user.get("is_verified") == 0 and user["role"] != "admin"):
+            user_dict = dict(user)
+            if user["account_status"] == "pending" or (user_dict.get("is_verified") == 0 and user["role"] != "admin"):
                 session["pending_user_id"] = user["id"]
                 session["pending_email"] = user["email"]
                 session["pending_full_name"] = user["username"]
