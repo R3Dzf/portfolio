@@ -96,6 +96,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
     # 1. Try Brevo HTTPS API (100% Free - 300 emails/day to ANY recipient in the world over HTTPS port 443!)
     if brevo_key:
         brevo_key_clean = brevo_key.strip("'\" \t\r\n")
+        print(f"[BREVO DEBUG] Key present (Length: {len(brevo_key_clean)}, Prefix: '{brevo_key_clean[:12]}...')")
         try:
             url = "https://api.brevo.com/v3/smtp/email"
             headers = {
