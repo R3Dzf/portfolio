@@ -2092,3 +2092,59 @@ button, a, .theme-toggle-btn, .skill-chip, .project-icon-link {
     .admin-nav__actions { gap: 4px; }
     .admin-nav__actions .btn--sm { padding: 4px 10px; font-size: 0.75rem; }
 }
+
+/* ==========================================================
+   ADMIN DASHBOARD FOOTER (DEVELOPER CREDITS)
+   ========================================================== */
+.admin-footer {
+    margin-top: 4rem;
+    padding: 1.75rem 0;
+    background: var(--clr-surface);
+    border-top: 1px solid var(--clr-border);
+    font-size: 0.88rem;
+    color: var(--clr-text-muted);
+}
+
+.admin-footer__inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.admin-footer__brand {
+    font-weight: 800;
+    color: var(--clr-text);
+    font-size: 0.95rem;
+}
+
+.admin-footer__version {
+    font-size: 0.72rem;
+    font-family: var(--ff-mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(108, 99, 255, 0.12);
+    color: var(--clr-primary);
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+.admin-footer__center p {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.admin-footer__center strong {
+    color: var(--clr-primary);
+}
+
+.admin-footer__link {
+    color: var(--clr-text-muted);
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.admin-footer__link:hover {
+    color: var(--clr-primary);
+}

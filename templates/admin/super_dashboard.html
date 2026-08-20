@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Super Admin Master Control — Ahmed Bosha Platform{% endblock %}
+
+{% block body %}
+<!-- ===== Super Admin Top Navigation ===== -->
+<nav class="admin-nav" style="border-bottom: 2px solid var(--clr-primary);">
+    <div class="container admin-nav__top" style="padding: 1rem 0;">
+        <a href="{{ url_for('super_admin_dashboard') }}" class="admin-nav__logo" style="font-size: 1.25rem;">
+            👑 Ahmed<span class="accent">Bosha</span> <span style="font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: rgba(108, 99, 255, 0.2); color: var(--clr-primary); border: 1px solid var(--clr-primary);">SUPER ADMIN</span>
+        </a>
+        <div class="admin-nav__top-actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--outline">
+                👤 My Portfolio Dashboard
+            </a>
+            <a href="{{ url_for('index') }}" target="_blank" rel="noopener" class="btn btn--sm btn--dark">
+                ↗ Main Site
+            </a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger">
+                Logout
+            </a>
+        </div>
+    </div>
+</nav>
+
+<main class="admin-main">
+    <div class="container">
+        
+        <!-- ===== Master Platform Header ===== -->
+        <div class="admin-header" style="margin-bottom: 2rem;">
+            <div>
+                <h1 class="admin-header__title" style="display: flex; align-items: center; gap: 10px;">
+                    👑 SaaS Platform Control Center
+                </h1>
+                <p class="admin-header__subtitle">
+                    Master management hub for all registered user portfolios &amp; system metrics.
+                </p>
+            </div>
+            <a href="{{ url_for('auth_register') }}" target="_blank" class="btn btn--primary">
+                + Register New User
+            </a>
+        </div>
+
+        <!-- ===== System Metrics Overview Cards ===== -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+            <div style="background: var(--clr-surface); border: 1px solid var(--clr-border); border-top: 3px solid var(--clr-primary); border-radius: 14px; padding: 1.25rem;">
+                <p style="font-size: 0.82rem; color: var(--clr-text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">Total Users</p>
+                <h2 style="font-size: 2rem; font-weight: 800; color: var(--clr-text); margin: 0;">{{ total_users }}</h2>
+            </div>
+            <div style="background: var(--clr-surface); border: 1px solid var(--clr-border); border-top: 3px solid #00f2fe; border-radius: 14px; padding: 1.25rem;">
+                <p style="font-size: 0.82rem; color: var(--clr-text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">Total Projects</p>
+                <h2 style="font-size: 2rem; font-weight: 800; color: var(--clr-text); margin: 0;">{{ total_projects }}</h2>
+            </div>
+            <div style="background: var(--clr-surface); border: 1px solid var(--clr-border); border-top: 3px solid #ff007f; border-radius: 14px; padding: 1.25rem;">
+                <p style="font-size: 0.82rem; color: var(--clr-text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">Skills Defined</p>
+                <h2 style="font-size: 2rem; font-weight: 800; color: var(--clr-text); margin: 0;">{{ total_skills }}</h2>
+            </div>
+            <div style="background: var(--clr-surface); border: 1px solid var(--clr-border); border-top: 3px solid #ffb703; border-radius: 14px; padding: 1.25rem;">
+                <p style="font-size: 0.82rem; color: var(--clr-text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">Achievements</p>
+                <h2 style="font-size: 2rem; font-weight: 800; color: var(--clr-text); margin: 0;">{{ total_achievements }}</h2>
+            </div>
+        </div>
+
+        <!-- ===== Registered Users Table ===== -->
+        <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.3rem; font-weight: 700; margin: 0;">👥 Registered User Accounts</h3>
+            <span style="font-size: 0.85rem; color: var(--clr-text-muted);">Showing {{ users_list | length }} accounts</span>
+        </div>
+
+        {% if users_list %}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>User Account</th>
+                        <th>Email</th>
+                        <th>Role &amp; Plan</th>
+                        <th>Status</th>
+                        <th>Joined Date</th>
+                        <th style="width: 220px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users_list %}
+                    <tr>
+                        <td class="cell-id">#{{ u.id }}</td>
+                        <td>
+                            <strong style="font-size: 1rem; color: var(--clr-text);">{{ u.username }}</strong>
+                            {% if u.id == 1 %}
+                            <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(108, 99, 255, 0.2); color: var(--clr-primary); margin-left: 6px;">SUPER ADMIN</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-family: var(--ff-mono); font-size: 0.88rem;">{{ u.email }}</td>
+                        <td>
+                            <span class="tag tag--sm" style="background: rgba(255,255,255,0.06); text-transform: uppercase;">{{ u.role }}</span>
+                            <span class="tag tag--sm" style="background: rgba(0, 242, 254, 0.15); color: #00f2fe; text-transform: uppercase;">{{ u.plan_tier }}</span>
+                        </td>
+                        <td>
+                            {% if u.account_status == 'active' %}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; background: rgba(46, 204, 113, 0.15); color: #2ecc71;">
+                                ● Active
+                            </span>
+                            {% else %}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; background: rgba(231, 76, 60, 0.15); color: #e74c3c;">
+                                🛑 Suspended
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.82rem; color: var(--clr-text-muted);">{{ u.created_at[:10] if u.created_at else '--' }}</td>
+                        <td>
+                            <div class="cell-actions" style="justify-content: flex-end;">
+                                <a href="{% if u.id == 1 %}{{ url_for('index') }}{% else %}{{ url_for('user_portfolio', username=u.username) }}{% endif %}" target="_blank" class="btn btn--sm btn--outline" title="View Portfolio">
+                                    👁️ View
+                                </a>
+                                {% if u.id != 1 %}
+                                <form method="POST" action="{{ url_for('super_admin_toggle_status', target_user_id=u.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn--sm {% if u.account_status == 'active' %}btn--danger{% else %}btn--primary{% endif %}">
+                                        {% if u.account_status == 'active' %}Ban{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('super_admin_delete_user', target_user_id=u.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete user &quot;{{ u.username }}&quot; and all their data?');">
+                                    <button type="submit" class="btn btn--sm btn--dark" style="color: #ff6b6b;" title="Delete User">
+                                        🗑️
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</main>
+
+{% include "admin/footer.html" %}
+{% endblock %}

@@ -15,6 +15,8 @@ import threading
 import json
 import urllib.request
 import urllib.error
+import datetime
+import random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -210,10 +212,16 @@ def close_db(exc):
         db.close()
 
 
-def get_settings(db=None):
+def get_settings(user_id=None, db=None):
     if db is None:
         db = get_db()
-    return db.execute("SELECT * FROM site_settings WHERE id = 1").fetchone()
+    if user_id is None:
+        user_id = session.get("user_id", 1)
+    s = db.execute("SELECT * FROM site_settings WHERE user_id = ?", (user_id,)).fetchone()
+    if not s:
+        # Fallback to default user 1 settings
+        s = db.execute("SELECT * FROM site_settings WHERE user_id = 1 OR id = 1").fetchone()
+    return s
 
 
 def init_db():
@@ -223,7 +231,8 @@ def init_db():
 
     db.executescript("""
         CREATE TABLE IF NOT EXISTS site_settings (
-            id              INTEGER PRIMARY KEY CHECK (id = 1),
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER DEFAULT 1,
             name            TEXT    DEFAULT 'Ahmed Bosha',
             logo_text       TEXT    DEFAULT 'AhmedBosha',
             site_title      TEXT    DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio',
@@ -247,8 +256,20 @@ def init_db():
             admin_pass_hash TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS users (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            username       TEXT UNIQUE NOT NULL,
+            email          TEXT UNIQUE NOT NULL,
+            password_hash  TEXT NOT NULL,
+            role           TEXT DEFAULT 'user',
+            account_status TEXT DEFAULT 'active',
+            plan_tier      TEXT DEFAULT 'free',
+            created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS education (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id             INTEGER DEFAULT 1,
             institution         TEXT    NOT NULL,
             degree              TEXT    NOT NULL,
             field_of_study      TEXT    NOT NULL,
@@ -260,6 +281,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS skills (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER DEFAULT 1,
             name        TEXT    NOT NULL,
             category    TEXT    NOT NULL DEFAULT 'Programming & Backend',
             level_tag   TEXT,
@@ -269,6 +291,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS experiences (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER DEFAULT 1,
             title       TEXT    NOT NULL,
             company     TEXT    NOT NULL,
             location    TEXT,
@@ -281,6 +304,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS services (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER DEFAULT 1,
             title       TEXT    NOT NULL,
             description TEXT    NOT NULL,
             icon        TEXT    DEFAULT '⚙️',
@@ -289,6 +313,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS projects (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER DEFAULT 1,
             title           TEXT    NOT NULL,
             description     TEXT    NOT NULL,
             tech_stack      TEXT    NOT NULL,
@@ -301,6 +326,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS achievements (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER DEFAULT 1,
             title           TEXT    NOT NULL,
             issuer          TEXT,
             date_earned     TEXT,
@@ -314,6 +340,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS testimonials (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER DEFAULT 1,
             client_name     TEXT    NOT NULL,
             client_role     TEXT    NOT NULL,
             quote           TEXT    NOT NULL,
@@ -323,6 +350,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS messages (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER DEFAULT 1,
             sender_name  TEXT    NOT NULL,
             sender_email TEXT    NOT NULL,
             message      TEXT    NOT NULL,
@@ -331,8 +359,73 @@ def init_db():
         );
     """)
 
-    # Safe Schema Migrations (for backwards compatibility)
+    # Safe Schema Migrations (for backwards compatibility & multi-tenancy)
     cursor = db.cursor()
+
+    # Rebuild site_settings if it has legacy CHECK (id = 1) constraint
+    sqlite_master_row = cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='site_settings'").fetchone()
+    if sqlite_master_row and "CHECK" in sqlite_master_row[0]:
+        cursor.execute("""
+            CREATE TABLE site_settings_new (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER DEFAULT 1,
+                name            TEXT    DEFAULT 'Ahmed Bosha',
+                logo_text       TEXT    DEFAULT 'AhmedBosha',
+                site_title      TEXT    DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio',
+                greeting        TEXT    DEFAULT 'Hi, I''m',
+                tagline         TEXT    DEFAULT 'Engineering Student & Software Developer',
+                typing_texts    TEXT    DEFAULT 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast',
+                bio             TEXT    DEFAULT 'Class of 2029. Passionate about automation, system analysis, and reverse engineering. I build tools that turn complex workflows into clean, efficient solutions.',
+                footer_text     TEXT    DEFAULT '© 2026 Ahmed Bosha',
+                profile_photo   TEXT,
+                email           TEXT    DEFAULT 'ahmedbosha2566@gmail.com',
+                github_url      TEXT    DEFAULT 'https://github.com/AhmedBosha',
+                linkedin_url    TEXT,
+                twitter_url     TEXT,
+                resume_url      TEXT,
+                color_primary   TEXT    DEFAULT '#6c63ff',
+                color_accent    TEXT    DEFAULT '#ff6b6b',
+                color_bg        TEXT    DEFAULT '#0c0c12',
+                color_surface   TEXT    DEFAULT '#161622',
+                color_text      TEXT    DEFAULT '#f0f0f8',
+                admin_user      TEXT    DEFAULT 'admin',
+                admin_pass_hash TEXT,
+                theme_name      TEXT    DEFAULT 'default'
+            )
+        """)
+        try:
+            cursor.execute("INSERT INTO site_settings_new (id, name, logo_text, site_title, greeting, tagline, typing_texts, bio, footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url, color_primary, color_accent, color_bg, color_surface, color_text, admin_user, admin_pass_hash) SELECT id, name, logo_text, site_title, greeting, tagline, typing_texts, bio, footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url, color_primary, color_accent, color_bg, color_surface, color_text, admin_user, admin_pass_hash FROM site_settings")
+        except Exception:
+            pass
+        cursor.execute("DROP TABLE site_settings")
+        cursor.execute("ALTER TABLE site_settings_new RENAME TO site_settings")
+        db.commit()
+    
+    # Ensure user_id column exists across all data tables
+    target_tables = [
+        "site_settings", "projects", "skills", "experiences",
+        "education", "services", "achievements", "testimonials", "messages"
+    ]
+    for table in target_tables:
+        cursor.execute(f"PRAGMA table_info({table})")
+        cols = [row[1] for row in cursor.fetchall()]
+        if "user_id" not in cols:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER DEFAULT 1")
+
+    # Safe Schema Migrations for users table
+    cursor.execute("PRAGMA table_info(users)")
+    user_cols = [row[1] for row in cursor.fetchall()]
+    needed_user_cols = [
+        ("verification_code", "TEXT"),
+        ("code_expires_at", "TIMESTAMP"),
+        ("reset_token", "TEXT"),
+        ("reset_token_expires_at", "TIMESTAMP"),
+        ("is_verified", "INTEGER DEFAULT 1"),
+    ]
+    for col, definition in needed_user_cols:
+        if col not in user_cols:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
+
     cursor.execute("PRAGMA table_info(site_settings)")
     existing_cols = [row[1] for row in cursor.fetchall()]
     needed_cols = [
@@ -341,6 +434,7 @@ def init_db():
         ("footer_text", "TEXT DEFAULT '© 2026 Ahmed Bosha'"),
         ("admin_user", "TEXT DEFAULT 'admin'"),
         ("admin_pass_hash", "TEXT"),
+        ("theme_name", "TEXT DEFAULT 'default'"),
     ]
     for col, definition in needed_cols:
         if col not in existing_cols:
@@ -353,6 +447,16 @@ def init_db():
         cursor.execute("ALTER TABLE achievements ADD COLUMN credential_id TEXT")
     if "image" not in ach_cols:
         cursor.execute("ALTER TABLE achievements ADD COLUMN image TEXT")
+
+    # Seed Default Super Admin User (Ahmed Bosha)
+    if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
+        admin_pass = os.environ.get("ADMIN_PASS", "admin123")
+        db.execute(
+            """INSERT INTO users (id, username, email, password_hash, role, account_status, plan_tier)
+               VALUES (1, 'admin', 'admin@ahmedbosha.com', ?, 'admin', 'active', 'pro')""",
+            (generate_password_hash(admin_pass),),
+        )
+
     db.commit()
 
     # ---- 1. Seed site_settings ----
@@ -548,9 +652,10 @@ def init_db():
 @app.context_processor
 def inject_globals():
     try:
-        settings = get_settings()
+        user_id = session.get("user_id", 1)
+        settings = get_settings(user_id=user_id)
         unread = get_db().execute(
-            "SELECT COUNT(*) FROM messages WHERE is_read = 0"
+            "SELECT COUNT(*) FROM messages WHERE user_id = ? AND is_read = 0", (user_id,)
         ).fetchone()[0]
     except Exception:
         settings = None
@@ -559,25 +664,94 @@ def inject_globals():
 
 
 # ---------------------------------------------------------------------------
-# Auth helpers
+# Auth helpers & Decorators
 # ---------------------------------------------------------------------------
+
+def get_current_user_id():
+    return session.get("user_id", 1)
+
 
 def login_required(view):
     @functools.wraps(view)
     def wrapped(**kwargs):
-        if not session.get("admin_logged_in"):
+        if not session.get("user_id") and not session.get("admin_logged_in"):
             flash("Please log in to access the dashboard.", "warning")
             return redirect(url_for("admin_login"))
         return view(**kwargs)
     return wrapped
 
 
+def superadmin_required(view):
+    @functools.wraps(view)
+    def wrapped(**kwargs):
+        if not session.get("user_id") or session.get("role") != "admin":
+            flash("Super Admin access required.", "danger")
+            return redirect(url_for("admin_login"))
+        return view(**kwargs)
+    return wrapped
+
+
 # ---------------------------------------------------------------------------
-# Public routes
+# Public & User Portfolio Routes
 # ---------------------------------------------------------------------------
+
+def render_user_portfolio(user_id):
+    db = get_db()
+    settings = get_settings(user_id=user_id, db=db)
+    if not settings:
+        settings = get_settings(user_id=1, db=db)
+
+    projects = db.execute("SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
+    skills_raw = db.execute("SELECT * FROM skills WHERE user_id = ? ORDER BY category ASC, sort_order ASC, id ASC", (user_id,)).fetchall()
+    
+    skill_categories = {}
+    for s in skills_raw:
+        cat = s["category"] or "General"
+        if cat not in skill_categories:
+            skill_categories[cat] = []
+        skill_categories[cat].append(s)
+
+    education_list = db.execute("SELECT * FROM education WHERE user_id = ? ORDER BY sort_order ASC, start_year DESC", (user_id,)).fetchall()
+    experiences_list = db.execute("SELECT * FROM experiences WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
+    services_list = db.execute("SELECT * FROM services WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
+    achievements_list = db.execute("SELECT * FROM achievements WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
+    testimonials_list = db.execute("SELECT * FROM testimonials WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
+
+    theme = "default"
+    if settings and "theme_name" in settings.keys() and settings["theme_name"]:
+        theme = settings["theme_name"]
+
+    theme_template = f"themes/{theme}/index.html"
+    if not os.path.exists(os.path.join(app.root_path, "templates", "themes", theme, "index.html")):
+        theme_template = "index.html"
+
+    return render_template(
+        theme_template,
+        settings=settings,
+        projects=projects,
+        skill_categories=skill_categories,
+        education_list=education_list,
+        experiences_list=experiences_list,
+        services_list=services_list,
+        achievements_list=achievements_list,
+        testimonials_list=testimonials_list,
+    )
+
 
 @app.route("/")
 def index():
+    return render_user_portfolio(1)
+
+
+@app.route("/u/<username>")
+def user_portfolio(username):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE LOWER(username) = ?", (username.strip().lower(),)).fetchone()
+    if not user:
+        abort(404)
+    if user["account_status"] == "suspended":
+        return render_template("errors/suspended.html", username=username), 403
+    return render_user_portfolio(user["id"])
     db = get_db()
     
     # 1. Projects
@@ -662,40 +836,369 @@ def contact():
 # Admin Auth & Dashboard Hub
 # ---------------------------------------------------------------------------
 
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    if session.get("admin_logged_in"):
+# ---------------------------------------------------------------------------
+# Auth Routes (Register, Login, Logout)
+# ---------------------------------------------------------------------------
+
+@app.route("/register", methods=["GET", "POST"])
+def auth_register():
+    if session.get("user_id"):
         return redirect(url_for("admin_dashboard"))
+
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        username = request.form.get("username", "").strip().lower()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
+        full_name = request.form.get("full_name", "").strip() or username.title()
+
+        if not username or not email or not password:
+            flash("Username, Email, and Password are required.", "danger")
+            return render_template("auth/register.html")
+
+        if len(username) < 3 or not username.isalnum():
+            flash("Username must be at least 3 alphanumeric characters (letters and numbers only).", "danger")
+            return render_template("auth/register.html")
+
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.", "danger")
+            return render_template("auth/register.html")
+
+        db = get_db()
+        existing = db.execute("SELECT id FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?", (username, email)).fetchone()
+        if existing:
+            flash("Username or Email is already registered. Please log in.", "warning")
+            return redirect(url_for("admin_login"))
+
+        # Generate 6-digit OTP with 5 min expiry
+        otp_code = str(random.randint(100000, 999999))
+        otp_expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+
+        cur = db.cursor()
+        cur.execute(
+            """INSERT INTO users (username, email, password_hash, role, account_status, plan_tier, verification_code, code_expires_at, is_verified)
+               VALUES (?, ?, ?, 'user', 'pending', 'free', ?, ?, 0)""",
+            (username, email, generate_password_hash(password), otp_code, otp_expires_at),
+        )
+        new_user_id = cur.lastrowid
+
+        # Seed site_settings for new user
+        db.execute(
+            """INSERT INTO site_settings (user_id, name, logo_text, site_title, bio, footer_text, theme_name)
+               VALUES (?, ?, ?, ?, ?, ?, 'default')""",
+            (
+                new_user_id,
+                full_name,
+                username,
+                f"{full_name} — Engineering & Software Portfolio",
+                f"Welcome to my portfolio! I build software and innovative engineering solutions.",
+                f"© 2026 {full_name}",
+            ),
+        )
+        db.commit()
+
+        # Store pending user info in session for OTP verification step
+        session["pending_user_id"] = new_user_id
+        session["pending_username"] = username
+        session["pending_email"] = email
+        session["pending_full_name"] = full_name
+
+        # Send OTP email in background
+        otp_html_body = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
+            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">🔐 Verify Your BoshaCraft Account</h2>
+            <p style="font-size: 15px; line-height: 1.7; color: #c0c0d0;">Hi <strong>{full_name}</strong>, your verification code is:</p>
+            <div style="text-align: center; margin: 24px 0;">
+                <div style="display: inline-block; background: #202030; border: 2px solid #6c63ff; border-radius: 14px; padding: 18px 36px;">
+                    <span style="font-size: 2.8rem; font-weight: 900; letter-spacing: 12px; color: #6c63ff; font-family: monospace;">{otp_code}</span>
+                </div>
+            </div>
+            <p style="font-size: 14px; color: #8e8ea6; text-align: center;">⏱ This code expires in <strong style="color: #f59e0b;">5 minutes</strong>.</p>
+            <p style="font-size: 13px; color: #6e6e86; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">If you didn't create a BoshaCraft account, please ignore this email.</p>
+        </div>
+        """
+
+        def _send_otp():
+            try:
+                resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+                if resend_key:
+                    url = "https://api.resend.com/emails"
+                    headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
+                    payload = {
+                        "from": "BoshaCraft <onboarding@resend.dev>",
+                        "to": [email],
+                        "subject": f"🔐 Your BoshaCraft Verification Code: {otp_code}",
+                        "html": otp_html_body,
+                    }
+                    data = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    urllib.request.urlopen(req, timeout=12)
+                    print(f"[OTP EMAIL SENT] Code {otp_code} → {email}")
+                else:
+                    print(f"[OTP CODE] (no email configured) Code for {email}: {otp_code}")
+            except Exception as e:
+                print(f"[OTP EMAIL ERROR] {e}")
+
+        threading.Thread(target=_send_otp, daemon=True).start()
+
+        # Mask email for display
+        parts = email.split("@")
+        masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else email
+
+        flash(f"A 6-digit code was sent to your email. Check your inbox!", "success")
+        return render_template("auth/verify_otp.html", masked_email=masked)
+
+    return render_template("auth/register.html")
+
+
+@app.route("/verify-otp", methods=["GET", "POST"])
+def auth_verify_otp():
+    pending_user_id = session.get("pending_user_id")
+    if not pending_user_id:
+        flash("Session expired. Please register again.", "warning")
+        return redirect(url_for("auth_register"))
+
+    if request.method == "POST":
+        otp_input = request.form.get("otp", "").strip()
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE id = ?", (pending_user_id,)).fetchone()
+
+        if not user:
+            flash("Account not found. Please register again.", "danger")
+            return redirect(url_for("auth_register"))
+
+        # Check expiry
+        if user["code_expires_at"]:
+            try:
+                exp_time = datetime.datetime.strptime(user["code_expires_at"], "%Y-%m-%d %H:%M:%S")
+                if datetime.datetime.now() > exp_time:
+                    flash("Code expired. Please request a new one.", "danger")
+                    parts = user["email"].split("@")
+                    masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
+                    return render_template("auth/verify_otp.html", masked_email=masked)
+            except Exception:
+                pass
+
+        if otp_input != user["verification_code"]:
+            flash("Invalid verification code. Please try again.", "danger")
+            parts = user["email"].split("@")
+            masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
+            return render_template("auth/verify_otp.html", masked_email=masked)
+
+        # OTP correct — activate user
+        db.execute(
+            "UPDATE users SET is_verified = 1, account_status = 'active', verification_code = NULL, code_expires_at = NULL WHERE id = ?",
+            (pending_user_id,)
+        )
+        db.commit()
+
+        # Clear pending session, start real session
+        full_name = session.pop("pending_full_name", user["username"])
+        session.pop("pending_email", None)
+        session.pop("pending_user_id", None)
+        session.pop("pending_username", None)
+
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        session["role"] = user["role"]
+        session["admin_logged_in"] = True
+
+        flash(f"🎉 Welcome, {full_name}! Your portfolio is live at /u/{user['username']}", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    # GET request - show verify form
+    pending_email = session.get("pending_email", "")
+    parts = pending_email.split("@")
+    masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else pending_email
+    return render_template("auth/verify_otp.html", masked_email=masked)
+
+
+@app.route("/resend-otp", methods=["POST"])
+def auth_resend_otp():
+    pending_user_id = session.get("pending_user_id")
+    if not pending_user_id:
+        flash("Session expired. Please register again.", "warning")
+        return redirect(url_for("auth_register"))
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (pending_user_id,)).fetchone()
+    if not user:
+        return redirect(url_for("auth_register"))
+
+    # Generate new OTP
+    otp_code = str(random.randint(100000, 999999))
+    otp_expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "UPDATE users SET verification_code = ?, code_expires_at = ? WHERE id = ?",
+        (otp_code, otp_expires_at, pending_user_id)
+    )
+    db.commit()
+
+    otp_html_body = f"""
+    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
+        <h2 style="color: #6c63ff; margin-top: 0;">🔐 New Verification Code</h2>
+        <div style="text-align: center; margin: 24px 0;">
+            <div style="display: inline-block; background: #202030; border: 2px solid #6c63ff; border-radius: 14px; padding: 18px 36px;">
+                <span style="font-size: 2.8rem; font-weight: 900; letter-spacing: 12px; color: #6c63ff; font-family: monospace;">{otp_code}</span>
+            </div>
+        </div>
+        <p style="font-size: 14px; color: #8e8ea6; text-align: center;">⏱ Valid for 5 minutes.</p>
+    </div>
+    """
+
+    def _resend():
+        try:
+            resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+            if resend_key:
+                url = "https://api.resend.com/emails"
+                headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
+                payload = {
+                    "from": "BoshaCraft <onboarding@resend.dev>",
+                    "to": [user["email"]],
+                    "subject": f"🔐 Your New Verification Code: {otp_code}",
+                    "html": otp_html_body,
+                }
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                urllib.request.urlopen(req, timeout=12)
+                print(f"[OTP RESEND] New code {otp_code} → {user['email']}")
+            else:
+                print(f"[OTP RESEND] (no email config) Code: {otp_code}")
+        except Exception as e:
+            print(f"[OTP RESEND ERROR] {e}")
+
+    threading.Thread(target=_resend, daemon=True).start()
+
+    parts = user["email"].split("@")
+    masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
+    flash("New verification code sent! Check your email.", "success")
+    return render_template("auth/verify_otp.html", masked_email=masked)
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
+def admin_login():
+    if session.get("user_id"):
+        if session.get("role") == "admin":
+            return redirect(url_for("super_admin_dashboard"))
+        return redirect(url_for("admin_dashboard"))
+
+    if request.method == "POST":
+        login_input = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
 
         db = get_db()
-        settings = get_settings(db)
-        expected_user = settings["admin_user"] if settings and settings["admin_user"] else ADMIN_USERNAME
-        expected_pass_hash = settings["admin_pass_hash"] if settings and settings["admin_pass_hash"] else ADMIN_PASSWORD_HASH
+        user = db.execute(
+            "SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?", (login_input, login_input)
+        ).fetchone()
 
-        if username == expected_user and check_password_hash(expected_pass_hash, password):
+        if user and check_password_hash(user["password_hash"], password):
+            if user["account_status"] == "suspended":
+                flash("Your account has been suspended by the administrator.", "danger")
+                return render_template("admin/login.html")
+
+            # Check if user has pending verification
+            if user["account_status"] == "pending" or (user.get("is_verified") == 0 and user["role"] != "admin"):
+                session["pending_user_id"] = user["id"]
+                session["pending_email"] = user["email"]
+                session["pending_full_name"] = user["username"]
+                parts = user["email"].split("@")
+                masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
+                flash("Please verify your email first.", "warning")
+                return render_template("auth/verify_otp.html", masked_email=masked)
+
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["role"] = user["role"]
             session["admin_logged_in"] = True
-            flash("Welcome back! Login successful.", "success")
+
+            flash(f"Welcome back, {user['username']}!", "success")
+            if user["role"] == "admin":
+                return redirect(url_for("super_admin_dashboard"))
             return redirect(url_for("admin_dashboard"))
         else:
-            flash("Invalid credentials.", "danger")
+            flash("Invalid username/email or password.", "danger")
+
     return render_template("admin/login.html")
 
 
 @app.route("/admin/logout")
+@app.route("/logout")
 def admin_logout():
     session.clear()
     flash("Logged out successfully.", "info")
     return redirect(url_for("index"))
 
 
+
+# ---------------------------------------------------------------------------
+# Super Admin Master Control Center (Ahmed Bosha Dashboard)
+# ---------------------------------------------------------------------------
+
+@app.route("/super-admin")
+@superadmin_required
+def super_admin_dashboard():
+    db = get_db()
+    users_list = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+    
+    total_users = len(users_list)
+    total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+    total_skills = db.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+    total_achievements = db.execute("SELECT COUNT(*) FROM achievements").fetchone()[0]
+    total_messages = db.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+
+    return render_template(
+        "admin/super_dashboard.html",
+        users_list=users_list,
+        total_users=total_users,
+        total_projects=total_projects,
+        total_skills=total_skills,
+        total_achievements=total_achievements,
+        total_messages=total_messages,
+    )
+
+
+@app.route("/super-admin/user/status/<int:target_user_id>", methods=["POST"])
+@superadmin_required
+def super_admin_toggle_status(target_user_id):
+    if target_user_id == 1:
+        flash("Cannot suspend Super Admin account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+    
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if user:
+        new_status = "suspended" if user["account_status"] == "active" else "active"
+        db.execute("UPDATE users SET account_status = ? WHERE id = ?", (new_status, target_user_id))
+        db.commit()
+        flash(f"User '{user['username']}' status changed to '{new_status}'.", "info")
+    return redirect(url_for("super_admin_dashboard"))
+
+
+@app.route("/super-admin/user/delete/<int:target_user_id>", methods=["POST"])
+@superadmin_required
+def super_admin_delete_user(target_user_id):
+    if target_user_id == 1:
+        flash("Cannot delete Super Admin account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+    
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if user:
+        tables = ["site_settings", "projects", "skills", "experiences", "education", "services", "achievements", "testimonials", "messages"]
+        for table in tables:
+            db.execute(f"DELETE FROM {table} WHERE user_id = ?", (target_user_id,))
+        db.execute("DELETE FROM users WHERE id = ?", (target_user_id,))
+        db.commit()
+        flash(f"User '{user['username']}' and all their data deleted permanently.", "success")
+    return redirect(url_for("super_admin_dashboard"))
+
+
 @app.route("/admin")
 @login_required
 def admin_dashboard():
     db = get_db()
-    projects = db.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
+    user_id = session.get("user_id", 1)
+    projects = db.execute("SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
     return render_template("admin/dashboard.html", projects=projects)
 
 
@@ -707,7 +1210,8 @@ def admin_dashboard():
 @login_required
 def admin_settings():
     db = get_db()
-    settings = get_settings(db)
+    user_id = session.get("user_id", 1)
+    settings = get_settings(user_id=user_id, db=db)
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -728,15 +1232,12 @@ def admin_settings():
         color_bg = request.form.get("color_bg", "#0c0c12").strip()
         color_surface = request.form.get("color_surface", "#161622").strip()
         color_text = request.form.get("color_text", "#f0f0f8").strip()
+        theme_name = request.form.get("theme_name", "default").strip()
 
-        # Admin credentials update
-        new_admin_user = request.form.get("admin_user", "").strip()
+        # Update user password if provided
         new_admin_pass = request.form.get("admin_password", "").strip()
-
-        admin_user = new_admin_user if new_admin_user else (settings["admin_user"] if settings and settings["admin_user"] else ADMIN_USERNAME)
-        admin_pass_hash = settings["admin_pass_hash"] if settings and settings["admin_pass_hash"] else ADMIN_PASSWORD_HASH
         if new_admin_pass:
-            admin_pass_hash = generate_password_hash(new_admin_pass)
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_admin_pass), user_id))
 
         profile_photo = settings["profile_photo"] if settings else None
         if "profile_photo" in request.files:
@@ -748,23 +1249,34 @@ def admin_settings():
             delete_upload(profile_photo)
             profile_photo = None
 
-        db.execute(
-            """UPDATE site_settings SET
-                name=?, logo_text=?, site_title=?, greeting=?, tagline=?, typing_texts=?, bio=?,
-                footer_text=?, profile_photo=?, email=?, github_url=?, linkedin_url=?, twitter_url=?, resume_url=?,
-                color_primary=?, color_accent=?, color_bg=?, color_surface=?, color_text=?,
-                admin_user=?, admin_pass_hash=?
-               WHERE id=1""",
-            (name, logo_text, site_title, greeting, tagline, typing_texts, bio,
-             footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url,
-             color_primary, color_accent, color_bg, color_surface, color_text,
-             admin_user, admin_pass_hash),
-        )
+        if settings:
+            db.execute(
+                """UPDATE site_settings SET
+                    name=?, logo_text=?, site_title=?, greeting=?, tagline=?, typing_texts=?, bio=?,
+                    footer_text=?, profile_photo=?, email=?, github_url=?, linkedin_url=?, twitter_url=?, resume_url=?,
+                    color_primary=?, color_accent=?, color_bg=?, color_surface=?, color_text=?, theme_name=?
+                   WHERE user_id=?""",
+                (name, logo_text, site_title, greeting, tagline, typing_texts, bio,
+                 footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url,
+                 color_primary, color_accent, color_bg, color_surface, color_text, theme_name, user_id),
+            )
+        else:
+            db.execute(
+                """INSERT INTO site_settings
+                    (user_id, name, logo_text, site_title, greeting, tagline, typing_texts, bio,
+                    footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url,
+                    color_primary, color_accent, color_bg, color_surface, color_text, theme_name)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (user_id, name, logo_text, site_title, greeting, tagline, typing_texts, bio,
+                 footer_text, profile_photo, email, github_url, linkedin_url, twitter_url, resume_url,
+                 color_primary, color_accent, color_bg, color_surface, color_text, theme_name),
+            )
+
         db.commit()
-        flash("Site settings & ownership configuration saved successfully!", "success")
+        flash("Portfolio settings and theme updated successfully!", "success")
         return redirect(url_for("admin_settings"))
 
-    return render_template("admin/settings.html", settings=get_settings(db))
+    return render_template("admin/settings.html", settings=settings)
 
 
 # ---------------------------------------------------------------------------
@@ -774,6 +1286,7 @@ def admin_settings():
 @app.route("/admin/projects/add", methods=["GET", "POST"])
 @login_required
 def admin_add_project():
+    user_id = session.get("user_id", 1)
     if request.method == "POST":
         title = request.form["title"].strip()
         description = request.form["description"].strip()
@@ -795,9 +1308,9 @@ def admin_add_project():
         db = get_db()
         db.execute(
             """INSERT INTO projects
-               (title, description, tech_stack, github_link, live_demo_link, certificate_url, image)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (title, description, tech_stack, github_link, live_demo_link, certificate_url, image),
+               (user_id, title, description, tech_stack, github_link, live_demo_link, certificate_url, image)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, title, description, tech_stack, github_link, live_demo_link, certificate_url, image),
         )
         db.commit()
         flash(f'Project "{title}" added!', "success")
@@ -809,8 +1322,9 @@ def admin_add_project():
 @app.route("/admin/projects/edit/<int:project_id>", methods=["GET", "POST"])
 @login_required
 def admin_edit_project(project_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    project = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    project = db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id)).fetchone()
     if project is None:
         abort(404)
 
@@ -840,9 +1354,9 @@ def admin_edit_project(project_id):
             """UPDATE projects
                SET title=?, description=?, tech_stack=?, github_link=?,
                    live_demo_link=?, certificate_url=?, image=?
-               WHERE id=?""",
+               WHERE id=? AND user_id=?""",
             (title, description, tech_stack, github_link, live_demo_link,
-             certificate_url, image, project_id),
+             certificate_url, image, project_id, user_id),
         )
         db.commit()
         flash(f'Project "{title}" updated!', "success")
@@ -854,12 +1368,13 @@ def admin_edit_project(project_id):
 @app.route("/admin/projects/delete/<int:project_id>", methods=["POST"])
 @login_required
 def admin_delete_project(project_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    project = db.execute("SELECT title, image FROM projects WHERE id = ?", (project_id,)).fetchone()
+    project = db.execute("SELECT title, image FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id)).fetchone()
     if project is None:
         abort(404)
     delete_upload(project["image"])
-    db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+    db.execute("DELETE FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id))
     db.commit()
     flash(f'Project "{project["title"]}" deleted.', "info")
     return redirect(url_for("admin_dashboard"))
@@ -872,14 +1387,16 @@ def admin_delete_project(project_id):
 @app.route("/admin/skills")
 @login_required
 def admin_skills():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    skills = db.execute("SELECT * FROM skills ORDER BY category ASC, sort_order ASC, id ASC").fetchall()
+    skills = db.execute("SELECT * FROM skills WHERE user_id = ? ORDER BY category ASC, sort_order ASC, id ASC", (user_id,)).fetchall()
     return render_template("admin/skills.html", skills=skills)
 
 
 @app.route("/admin/skills/add", methods=["POST"])
 @login_required
 def admin_add_skill():
+    user_id = session.get("user_id", 1)
     name = request.form.get("name", "").strip()
     category = request.form.get("category", "Programming & Backend").strip()
     level_tag = request.form.get("level_tag", "").strip() or None
@@ -892,8 +1409,8 @@ def admin_add_skill():
 
     db = get_db()
     db.execute(
-        "INSERT INTO skills (name, category, level_tag, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
-        (name, category, level_tag, icon, sort_order),
+        "INSERT INTO skills (user_id, name, category, level_tag, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, name, category, level_tag, icon, sort_order),
     )
     db.commit()
     flash(f'Skill "{name}" added!', "success")
@@ -903,6 +1420,7 @@ def admin_add_skill():
 @app.route("/admin/skills/edit/<int:skill_id>", methods=["POST"])
 @login_required
 def admin_edit_skill(skill_id):
+    user_id = session.get("user_id", 1)
     name = request.form.get("name", "").strip()
     category = request.form.get("category", "Programming & Backend").strip()
     level_tag = request.form.get("level_tag", "").strip() or None
@@ -915,8 +1433,8 @@ def admin_edit_skill(skill_id):
 
     db = get_db()
     db.execute(
-        "UPDATE skills SET name=?, category=?, level_tag=?, icon=?, sort_order=? WHERE id=?",
-        (name, category, level_tag, icon, sort_order, skill_id),
+        "UPDATE skills SET name=?, category=?, level_tag=?, icon=?, sort_order=? WHERE id=? AND user_id=?",
+        (name, category, level_tag, icon, sort_order, skill_id, user_id),
     )
     db.commit()
     flash(f'Skill "{name}" updated!', "success")
@@ -926,10 +1444,11 @@ def admin_edit_skill(skill_id):
 @app.route("/admin/skills/delete/<int:skill_id>", methods=["POST"])
 @login_required
 def admin_delete_skill(skill_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    skill = db.execute("SELECT name FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    skill = db.execute("SELECT name FROM skills WHERE id = ? AND user_id = ?", (skill_id, user_id)).fetchone()
     if skill:
-        db.execute("DELETE FROM skills WHERE id = ?", (skill_id,))
+        db.execute("DELETE FROM skills WHERE id = ? AND user_id = ?", (skill_id, user_id))
         db.commit()
         flash(f'Skill "{skill["name"]}" deleted.', "info")
     return redirect(url_for("admin_skills"))
@@ -942,14 +1461,16 @@ def admin_delete_skill(skill_id):
 @app.route("/admin/education")
 @login_required
 def admin_education():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    items = db.execute("SELECT * FROM education ORDER BY sort_order ASC, start_year DESC").fetchall()
+    items = db.execute("SELECT * FROM education WHERE user_id = ? ORDER BY sort_order ASC, start_year DESC", (user_id,)).fetchall()
     return render_template("admin/education.html", education_list=items)
 
 
 @app.route("/admin/education/add", methods=["POST"])
 @login_required
 def admin_add_education():
+    user_id = session.get("user_id", 1)
     institution = request.form.get("institution", "").strip()
     degree = request.form.get("degree", "").strip()
     field_of_study = request.form.get("field_of_study", "").strip()
@@ -964,9 +1485,9 @@ def admin_add_education():
 
     db = get_db()
     db.execute(
-        """INSERT INTO education (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order),
+        """INSERT INTO education (user_id, institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order),
     )
     db.commit()
     flash("Education entry added!", "success")
@@ -976,6 +1497,7 @@ def admin_add_education():
 @app.route("/admin/education/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_education(item_id):
+    user_id = session.get("user_id", 1)
     institution = request.form.get("institution", "").strip()
     degree = request.form.get("degree", "").strip()
     field_of_study = request.form.get("field_of_study", "").strip()
@@ -991,8 +1513,8 @@ def admin_edit_education(item_id):
     db = get_db()
     db.execute(
         """UPDATE education SET institution=?, degree=?, field_of_study=?, start_year=?, end_year=?, grade_or_details=?, sort_order=?
-           WHERE id=?""",
-        (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order, item_id),
+           WHERE id=? AND user_id=?""",
+        (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order, item_id, user_id),
     )
     db.commit()
     flash("Education entry updated!", "success")
@@ -1002,8 +1524,9 @@ def admin_edit_education(item_id):
 @app.route("/admin/education/delete/<int:item_id>", methods=["POST"])
 @login_required
 def admin_delete_education(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    db.execute("DELETE FROM education WHERE id = ?", (item_id,))
+    db.execute("DELETE FROM education WHERE id = ? AND user_id = ?", (item_id, user_id))
     db.commit()
     flash("Education entry deleted.", "info")
     return redirect(url_for("admin_education"))
@@ -1016,14 +1539,16 @@ def admin_delete_education(item_id):
 @app.route("/admin/experience")
 @login_required
 def admin_experience():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    items = db.execute("SELECT * FROM experiences ORDER BY sort_order ASC, id ASC").fetchall()
+    items = db.execute("SELECT * FROM experiences WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
     return render_template("admin/experience.html", experiences_list=items)
 
 
 @app.route("/admin/experience/add", methods=["POST"])
 @login_required
 def admin_add_experience():
+    user_id = session.get("user_id", 1)
     title = request.form.get("title", "").strip()
     company = request.form.get("company", "").strip()
     location = request.form.get("location", "").strip() or None
@@ -1039,9 +1564,9 @@ def admin_add_experience():
 
     db = get_db()
     db.execute(
-        """INSERT INTO experiences (title, company, location, start_date, end_date, description, is_current, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (title, company, location, start_date, end_date, description, is_current, sort_order),
+        """INSERT INTO experiences (user_id, title, company, location, start_date, end_date, description, is_current, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, title, company, location, start_date, end_date, description, is_current, sort_order),
     )
     db.commit()
     flash(f'Experience "{title}" added!', "success")
@@ -1051,6 +1576,7 @@ def admin_add_experience():
 @app.route("/admin/experience/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_experience(item_id):
+    user_id = session.get("user_id", 1)
     title = request.form.get("title", "").strip()
     company = request.form.get("company", "").strip()
     location = request.form.get("location", "").strip() or None
@@ -1067,8 +1593,8 @@ def admin_edit_experience(item_id):
     db = get_db()
     db.execute(
         """UPDATE experiences SET title=?, company=?, location=?, start_date=?, end_date=?, description=?, is_current=?, sort_order=?
-           WHERE id=?""",
-        (title, company, location, start_date, end_date, description, is_current, sort_order, item_id),
+           WHERE id=? AND user_id=?""",
+        (title, company, location, start_date, end_date, description, is_current, sort_order, item_id, user_id),
     )
     db.commit()
     flash(f'Experience "{title}" updated!', "success")
@@ -1078,8 +1604,9 @@ def admin_edit_experience(item_id):
 @app.route("/admin/experience/delete/<int:item_id>", methods=["POST"])
 @login_required
 def admin_delete_experience(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    db.execute("DELETE FROM experiences WHERE id = ?", (item_id,))
+    db.execute("DELETE FROM experiences WHERE id = ? AND user_id = ?", (item_id, user_id))
     db.commit()
     flash("Experience entry deleted.", "info")
     return redirect(url_for("admin_experience"))
@@ -1092,14 +1619,16 @@ def admin_delete_experience(item_id):
 @app.route("/admin/services")
 @login_required
 def admin_services():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    items = db.execute("SELECT * FROM services ORDER BY sort_order ASC, id ASC").fetchall()
+    items = db.execute("SELECT * FROM services WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
     return render_template("admin/services.html", services_list=items)
 
 
 @app.route("/admin/services/add", methods=["POST"])
 @login_required
 def admin_add_service():
+    user_id = session.get("user_id", 1)
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     icon = request.form.get("icon", "⚙️").strip() or "⚙️"
@@ -1111,8 +1640,8 @@ def admin_add_service():
 
     db = get_db()
     db.execute(
-        "INSERT INTO services (title, description, icon, sort_order) VALUES (?, ?, ?, ?)",
-        (title, description, icon, sort_order),
+        "INSERT INTO services (user_id, title, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (user_id, title, description, icon, sort_order),
     )
     db.commit()
     flash(f'Service "{title}" added!', "success")
@@ -1122,6 +1651,7 @@ def admin_add_service():
 @app.route("/admin/services/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_service(item_id):
+    user_id = session.get("user_id", 1)
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     icon = request.form.get("icon", "⚙️").strip() or "⚙️"
@@ -1133,8 +1663,8 @@ def admin_edit_service(item_id):
 
     db = get_db()
     db.execute(
-        "UPDATE services SET title=?, description=?, icon=?, sort_order=? WHERE id=?",
-        (title, description, icon, sort_order, item_id),
+        "UPDATE services SET title=?, description=?, icon=?, sort_order=? WHERE id=? AND user_id=?",
+        (title, description, icon, sort_order, item_id, user_id),
     )
     db.commit()
     flash(f'Service "{title}" updated!', "success")
@@ -1144,8 +1674,9 @@ def admin_edit_service(item_id):
 @app.route("/admin/services/delete/<int:item_id>", methods=["POST"])
 @login_required
 def admin_delete_service(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    db.execute("DELETE FROM services WHERE id = ?", (item_id,))
+    db.execute("DELETE FROM services WHERE id = ? AND user_id = ?", (item_id, user_id))
     db.commit()
     flash("Service deleted.", "info")
     return redirect(url_for("admin_services"))
@@ -1158,14 +1689,16 @@ def admin_delete_service(item_id):
 @app.route("/admin/achievements")
 @login_required
 def admin_achievements():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    items = db.execute("SELECT * FROM achievements ORDER BY sort_order ASC, id ASC").fetchall()
+    items = db.execute("SELECT * FROM achievements WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
     return render_template("admin/achievements.html", achievements_list=items)
 
 
 @app.route("/admin/achievements/add", methods=["POST"])
 @login_required
 def admin_add_achievement():
+    user_id = session.get("user_id", 1)
     title = request.form.get("title", "").strip()
     issuer = request.form.get("issuer", "").strip() or None
     date_earned = request.form.get("date_earned", "").strip() or None
@@ -1187,9 +1720,9 @@ def admin_add_achievement():
 
     db = get_db()
     db.execute(
-        """INSERT INTO achievements (title, issuer, date_earned, credential_url, credential_id, image, icon, description, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order),
+        """INSERT INTO achievements (user_id, title, issuer, date_earned, credential_url, credential_id, image, icon, description, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order),
     )
     db.commit()
     flash(f'Achievement "{title}" added!', "success")
@@ -1199,8 +1732,9 @@ def admin_add_achievement():
 @app.route("/admin/achievements/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_achievement(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    current = db.execute("SELECT * FROM achievements WHERE id = ?", (item_id,)).fetchone()
+    current = db.execute("SELECT * FROM achievements WHERE id = ? AND user_id = ?", (item_id, user_id)).fetchone()
     if not current:
         flash("Achievement not found.", "danger")
         return redirect(url_for("admin_achievements"))
@@ -1231,8 +1765,8 @@ def admin_edit_achievement(item_id):
     db.execute(
         """UPDATE achievements SET
             title=?, issuer=?, date_earned=?, credential_url=?, credential_id=?, image=?, icon=?, description=?, sort_order=?
-           WHERE id=?""",
-        (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order, item_id),
+           WHERE id=? AND user_id=?""",
+        (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order, item_id, user_id),
     )
     db.commit()
     flash(f'Achievement "{title}" updated!', "success")
@@ -1242,11 +1776,12 @@ def admin_edit_achievement(item_id):
 @app.route("/admin/achievements/delete/<int:item_id>", methods=["POST"])
 @login_required
 def admin_delete_achievement(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    current = db.execute("SELECT image FROM achievements WHERE id = ?", (item_id,)).fetchone()
+    current = db.execute("SELECT image FROM achievements WHERE id = ? AND user_id = ?", (item_id, user_id)).fetchone()
     if current and current["image"]:
         delete_upload(current["image"])
-    db.execute("DELETE FROM achievements WHERE id = ?", (item_id,))
+    db.execute("DELETE FROM achievements WHERE id = ? AND user_id = ?", (item_id, user_id))
     db.commit()
     flash("Achievement deleted.", "info")
     return redirect(url_for("admin_achievements"))
@@ -1259,14 +1794,16 @@ def admin_delete_achievement(item_id):
 @app.route("/admin/testimonials")
 @login_required
 def admin_testimonials():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    items = db.execute("SELECT * FROM testimonials ORDER BY sort_order ASC, id ASC").fetchall()
+    items = db.execute("SELECT * FROM testimonials WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
     return render_template("admin/testimonials.html", testimonials_list=items)
 
 
 @app.route("/admin/testimonials/add", methods=["POST"])
 @login_required
 def admin_add_testimonial():
+    user_id = session.get("user_id", 1)
     client_name = request.form.get("client_name", "").strip()
     client_role = request.form.get("client_role", "").strip()
     quote = request.form.get("quote", "").strip()
@@ -1279,8 +1816,8 @@ def admin_add_testimonial():
 
     db = get_db()
     db.execute(
-        "INSERT INTO testimonials (client_name, client_role, quote, avatar, sort_order) VALUES (?, ?, ?, ?, ?)",
-        (client_name, client_role, quote, avatar, sort_order),
+        "INSERT INTO testimonials (user_id, client_name, client_role, quote, avatar, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, client_name, client_role, quote, avatar, sort_order),
     )
     db.commit()
     flash(f'Testimonial from "{client_name}" added!', "success")
@@ -1290,6 +1827,7 @@ def admin_add_testimonial():
 @app.route("/admin/testimonials/edit/<int:item_id>", methods=["POST"])
 @login_required
 def admin_edit_testimonial(item_id):
+    user_id = session.get("user_id", 1)
     client_name = request.form.get("client_name", "").strip()
     client_role = request.form.get("client_role", "").strip()
     quote = request.form.get("quote", "").strip()
@@ -1302,8 +1840,8 @@ def admin_edit_testimonial(item_id):
 
     db = get_db()
     db.execute(
-        "UPDATE testimonials SET client_name=?, client_role=?, quote=?, avatar=?, sort_order=? WHERE id=?",
-        (client_name, client_role, quote, avatar, sort_order, item_id),
+        "UPDATE testimonials SET client_name=?, client_role=?, quote=?, avatar=?, sort_order=? WHERE id=? AND user_id=?",
+        (client_name, client_role, quote, avatar, sort_order, item_id, user_id),
     )
     db.commit()
     flash(f'Testimonial from "{client_name}" updated!', "success")
@@ -1313,8 +1851,9 @@ def admin_edit_testimonial(item_id):
 @app.route("/admin/testimonials/delete/<int:item_id>", methods=["POST"])
 @login_required
 def admin_delete_testimonial(item_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    db.execute("DELETE FROM testimonials WHERE id = ?", (item_id,))
+    db.execute("DELETE FROM testimonials WHERE id = ? AND user_id = ?", (item_id, user_id))
     db.commit()
     flash("Testimonial deleted.", "info")
     return redirect(url_for("admin_testimonials"))
@@ -1327,9 +1866,10 @@ def admin_delete_testimonial(item_id):
 @app.route("/admin/messages")
 @login_required
 def admin_messages():
+    user_id = session.get("user_id", 1)
     db = get_db()
-    messages = db.execute("SELECT * FROM messages ORDER BY created_at DESC").fetchall()
-    db.execute("UPDATE messages SET is_read = 1 WHERE is_read = 0")
+    messages = db.execute("SELECT * FROM messages WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
+    db.execute("UPDATE messages SET is_read = 1 WHERE user_id = ? AND is_read = 0", (user_id,))
     db.commit()
     return render_template("admin/messages.html", messages=messages)
 
@@ -1337,11 +1877,111 @@ def admin_messages():
 @app.route("/admin/messages/delete/<int:msg_id>", methods=["POST"])
 @login_required
 def admin_delete_message(msg_id):
+    user_id = session.get("user_id", 1)
     db = get_db()
-    db.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
+    db.execute("DELETE FROM messages WHERE id = ? AND user_id = ?", (msg_id, user_id))
     db.commit()
     flash("Message deleted.", "info")
     return redirect(url_for("admin_messages"))
+
+
+# ---------------------------------------------------------------------------
+# Password Reset & Email OTP Verification Routes
+# ---------------------------------------------------------------------------
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def auth_forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
+
+        if user:
+            reset_token = uuid.uuid4().hex
+            expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+            expires_str = expires_at.strftime("%Y-%m-%d %H:%M:%S")
+
+            db.execute("UPDATE users SET reset_token = ?, reset_token_expires_at = ? WHERE id = ?", (reset_token, expires_str, user["id"]))
+            db.commit()
+
+            reset_url = url_for("auth_reset_password", token=reset_token, _external=True)
+            reset_html = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
+                <h2 style="color: #6c63ff; margin-top: 0;">🔒 Password Reset Request</h2>
+                <p style="font-size: 15px; line-height: 1.7; color: #c0c0d0;">Hi <strong>{user['username']}</strong>, click the button below to reset your password. This link expires in <strong style="color: #f59e0b;">15 minutes</strong>.</p>
+                <div style="text-align: center; margin: 28px 0;">
+                    <a href="{reset_url}" style="display: inline-block; background: #6c63ff; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 16px;">Reset My Password</a>
+                </div>
+                <p style="font-size: 12px; color: #6e6e86; word-break: break-all;">Or copy this link: {reset_url}</p>
+                <p style="font-size: 13px; color: #6e6e86; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">If you didn't request this, please ignore this email.</p>
+            </div>
+            """
+
+            def _send_reset(to_email, html_body, username_val):
+                try:
+                    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+                    if resend_key:
+                        import urllib.request as _ur
+                        import json as _json
+                        url_api = "https://api.resend.com/emails"
+                        headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
+                        payload = {
+                            "from": "BoshaCraft <onboarding@resend.dev>",
+                            "to": [to_email],
+                            "subject": "🔒 Reset Your BoshaCraft Password",
+                            "html": html_body,
+                        }
+                        req = _ur.Request(url_api, data=_json.dumps(payload).encode(), headers=headers, method="POST")
+                        _ur.urlopen(req, timeout=12)
+                        print(f"[RESET EMAIL SENT] → {to_email}")
+                    else:
+                        send_email_core("BoshaCraft Security", "noreply@portfolio.local", f"Password reset link: {reset_url}", recipient_email=to_email)
+                        print(f"[RESET EMAIL via SMTP] → {to_email}")
+                except Exception as e:
+                    print(f"[RESET EMAIL ERROR] {e}")
+
+            threading.Thread(target=_send_reset, args=(email, reset_html, user["username"]), daemon=True).start()
+            flash("✅ Password reset link sent to your email! Check your inbox.", "success")
+            return redirect(url_for("admin_login"))
+        else:
+            flash("No account registered with that email address.", "danger")
+
+    return render_template("auth/forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def auth_reset_password(token):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE reset_token = ?", (token,)).fetchone()
+
+    if not user:
+        flash("Invalid or expired password reset link.", "danger")
+        return redirect(url_for("auth_forgot_password"))
+
+    if user["reset_token_expires_at"]:
+        try:
+            exp_time = datetime.datetime.strptime(user["reset_token_expires_at"], "%Y-%m-%d %H:%M:%S")
+            if datetime.datetime.now() > exp_time:
+                flash("Password reset link has expired. Please request a new one.", "danger")
+                return redirect(url_for("auth_forgot_password"))
+        except Exception:
+            pass
+
+    if request.method == "POST":
+        new_password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not new_password or new_password != confirm_password:
+            flash("Passwords do not match or are empty.", "danger")
+            return render_template("auth/reset_password.html", token=token)
+
+        db.execute("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?", (generate_password_hash(new_password), user["id"]))
+        db.commit()
+
+        flash("Your password has been reset successfully! Please log in.", "success")
+        return redirect(url_for("admin_login"))
+
+    return render_template("auth/reset_password.html", token=token)
 
 
 @app.route("/admin/test-email", methods=["POST"])

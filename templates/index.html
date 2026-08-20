@@ -31,6 +31,20 @@
         </ul>
 
         <div class="navbar__actions">
+            <!-- Login / Register / Dashboard button -->
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 7px 14px; border-radius: 8px;">
+                ⚙️ Dashboard
+            </a>
+            {% else %}
+            <a href="{{ url_for('admin_login') }}" class="btn btn--sm btn--outline" style="font-size: 0.82rem; padding: 7px 14px; border-radius: 8px;">
+                Login
+            </a>
+            <a href="{{ url_for('auth_register') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 7px 14px; border-radius: 8px;">
+                Register
+            </a>
+            {% endif %}
+
             <!-- Theme Toggle Button (Light/Dark) -->
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle Theme" title="Toggle Light / Dark Theme">
                 <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="19" height="19">

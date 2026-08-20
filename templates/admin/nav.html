@@ -4,14 +4,22 @@
         <!-- Top Bar: Brand, Site Link, Messages & Logout -->
         <div class="admin-nav__top">
             <a href="{{ url_for('admin_dashboard') }}" class="admin-nav__logo">
-                Ahmed<span class="accent">Bosha</span> <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--clr-surface-2); color: var(--clr-text-muted); border: 1px solid var(--clr-border);">CMS</span>
+                {{ session.get('username', 'Portfolio') }}<span class="accent">CMS</span>
+                {% if session.get('role') == 'admin' %}
+                <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: rgba(108, 99, 255, 0.2); color: var(--clr-primary); border: 1px solid var(--clr-primary); margin-left: 6px;">SUPER ADMIN</span>
+                {% endif %}
             </a>
             <div class="admin-nav__top-actions">
+                {% if session.get('role') == 'admin' %}
+                <a href="{{ url_for('super_admin_dashboard') }}" class="btn btn--sm btn--primary">
+                    👑 Master Control
+                </a>
+                {% endif %}
                 <a href="{{ url_for('admin_messages') }}" class="btn btn--sm {% if active_tab == 'messages' %}btn--primary{% else %}btn--outline{% endif %}">
                     📬 Messages{% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
                 </a>
-                <a href="{{ url_for('index') }}" target="_blank" rel="noopener" class="btn btn--sm btn--dark" title="View Public Portfolio">
-                    ↗ View Site
+                <a href="{% if session.get('username') and session.get('username') != 'admin' %}{{ url_for('user_portfolio', username=session.get('username')) }}{% else %}{{ url_for('index') }}{% endif %}" target="_blank" rel="noopener" class="btn btn--sm btn--dark" title="View Public Portfolio">
+                    ↗ View My Site
                 </a>
                 <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger" title="Logout">
                     Logout

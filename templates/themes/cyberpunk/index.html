@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ settings.site_title if settings and settings.site_title else 'Cyberpunk Portfolio' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --cp-bg: #05050a;
+    --cp-neon-cyan: #00f2fe;
+    --cp-neon-pink: #ff007f;
+    --cp-surface: #0a0a14;
+    --cp-border: rgba(0, 242, 254, 0.25);
+}
+
+body {
+    background: var(--cp-bg) !important;
+    color: #e2e8f0 !important;
+    font-family: 'Fira Code', 'Courier New', monospace !important;
+}
+
+.cp-glitch-header {
+    text-shadow: 0 0 12px var(--cp-neon-cyan), 0 0 24px var(--cp-neon-cyan);
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
+.cp-card {
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.08);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.cp-card:hover {
+    border-color: var(--cp-neon-cyan);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.25);
+    transform: translateY(-4px);
+}
+
+.cp-badge {
+    background: rgba(0, 242, 254, 0.1);
+    color: var(--cp-neon-cyan);
+    border: 1px solid var(--cp-neon-cyan);
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<!-- ===== CYBERPUNK THEME ===== -->
+<div class="container" style="padding-top: 4rem; padding-bottom: 6rem;">
+    <!-- Top Cyber Banner -->
+    <div style="margin-bottom: 3rem; text-align: center;">
+        <div class="cp-badge" style="display: inline-block; margin-bottom: 1rem;">SYSTEM_READY // REVERSE_ENGINEER_MODE</div>
+        <h1 class="cp-glitch-header" style="font-size: 3rem; color: #fff;">{{ settings.name if settings else 'Cyber Developer' }}</h1>
+        <p style="color: var(--cp-neon-cyan); font-size: 1.2rem; margin-top: 0.5rem;">$ {{ settings.bio if settings else 'Cybersecurity & Low Level Systems' }}</p>
+    </div>
+
+    <!-- Featured Projects Grid -->
+    <h2 style="font-size: 1.8rem; color: var(--cp-neon-pink); margin-bottom: 1.5rem; border-bottom: 1px solid var(--cp-border); padding-bottom: 0.5rem;">
+        ⚡ EXECUTABLE_PROJECTS ({{ projects | length }})
+    </h2>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+        {% for p in projects %}
+        <div class="cp-card">
+            {% if p.image %}
+            <img src="{{ url_for('static', filename='uploads/' + p.image) }}" alt="{{ p.title }}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--cp-border);">
+            {% endif %}
+            <h3 style="font-size: 1.3rem; color: #fff; margin-bottom: 0.5rem;">&gt; {{ p.title }}</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">{{ p.description }}</p>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem;">
+                {% for tech in p.tech_stack.split(',') %}
+                <span class="cp-badge">{{ tech.strip() }}</span>
+                {% endfor %}
+            </div>
+            <div style="display: flex; gap: 10px;">
+                {% if p.github_link %}<a href="{{ p.github_link }}" target="_blank" class="cp-badge" style="text-decoration: none;">[Source]</a>{% endif %}
+                {% if p.live_demo_link %}<a href="{{ p.live_demo_link }}" target="_blank" class="cp-badge" style="color: var(--cp-neon-pink); border-color: var(--cp-neon-pink); text-decoration: none;">[Live Demo]</a>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Skills & Tech -->
+    <h2 style="font-size: 1.8rem; color: var(--cp-neon-cyan); margin-bottom: 1.5rem; border-bottom: 1px solid var(--cp-border); padding-bottom: 0.5rem;">
+        🛠 SYSTEM_CAPABILITIES
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
+        {% for cat, skills in skill_categories.items() %}
+        <div class="cp-card">
+            <h4 style="color: var(--cp-neon-cyan); font-size: 1.1rem; margin-bottom: 0.8rem;">[ {{ cat }} ]</h4>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                {% for s in skills %}
+                <span class="cp-badge">{{ s.icon or '⚡' }} {{ s.name }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

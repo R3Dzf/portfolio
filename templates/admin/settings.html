@@ -40,9 +40,18 @@
                                value="{{ settings.site_title or '' }}" placeholder="e.g. Ahmed Bosha — Engineering &amp; Software Portfolio">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="greeting">Greeting Word</label>
-                        <input class="form-input" type="text" id="greeting" name="greeting"
-                               value="{{ settings.greeting or '' }}" placeholder="e.g. Hi, I'm / Welcome, I'm">
+                        <label class="form-label" for="theme_name">🎨 Portfolio Layout &amp; Theme Preset</label>
+                        <select class="form-input" id="theme_name" name="theme_name" style="font-weight: 600;">
+                            <option value="default" {% if not settings or not settings.theme_name or settings.theme_name == 'default' %}selected{% endif %}>
+                                ✨ Modern Minimalist (Clean Standard Layout)
+                            </option>
+                            <option value="cyberpunk" {% if settings and settings.theme_name == 'cyberpunk' %}selected{% endif %}>
+                                ⚡ Cyberpunk Engineer (Neo-Dark Neon &amp; Code Aesthetics)
+                            </option>
+                            <option value="bento" {% if settings and settings.theme_name == 'bento' %}selected{% endif %}>
+                                🍱 Bento Grid (Glassmorphic Modular Cards Layout)
+                            </option>
+                        </select>
                     </div>
                 </div>
 
@@ -261,6 +270,8 @@
         </div>
     </div>
 </main>
+
+{% include "admin/footer.html" %}
 
 <script>
 function applyPreset(primary, accent, bg, surface, text) {

@@ -25,23 +25,26 @@
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    Username
+                    Username or Email
                 </label>
                 <input class="form-input" type="text" id="username" name="username"
-                       placeholder="Enter admin username" required autofocus autocomplete="username">
+                       placeholder="Enter username or email" required autofocus autocomplete="username">
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="password">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    Password
-                </label>
-                <div style="position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label class="form-label" for="password" style="margin-bottom: 0;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Password
+                    </label>
+                    <a href="{{ url_for('auth_forgot_password') }}" style="font-size: 0.8rem; color: var(--clr-primary); font-weight: 600; text-decoration: none;">Forgot Password?</a>
+                </div>
+                <div style="position: relative; margin-top: 6px;">
                     <input class="form-input" type="password" id="password" name="password"
-                           placeholder="Enter admin password" required autocomplete="current-password"
+                           placeholder="Enter password" required autocomplete="current-password"
                            style="padding-right: 42px;">
                     <button type="button" id="togglePassBtn" aria-label="Toggle password visibility"
                             style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--clr-text-muted); cursor: pointer; padding: 0;">
@@ -57,12 +60,16 @@
                 ⚡ Log In to Dashboard
             </button>
 
-            <div class="auth-card__footer">
-                <a href="{{ url_for('index') }}" class="auth-card__back">
-                    &larr; Back to Public Portfolio
-                </a>
+            <div class="auth-card__footer" style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--clr-text-muted);">
+                Don't have an account? <a href="{{ url_for('auth_register') }}" style="color: var(--clr-primary); font-weight: 600;">Create Free Portfolio</a>
             </div>
         </form>
+
+        <div class="auth-card__footer" style="margin-top: 0.5rem;">
+            <a href="{{ url_for('index') }}" class="auth-card__back">
+                &larr; Back to Public Portfolio
+            </a>
+        </div>
     </div>
 </div>
 
