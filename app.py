@@ -112,7 +112,9 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 return True, f"Sent via Resend to {to_email}"
         except urllib.error.HTTPError as e:
             err = e.read().decode("utf-8")
-            print(f"[RESEND HTTP ERROR] {err}")
+            print(f"[RESEND HTTP ERROR {e.code}] {err}")
+            if e.code == 403:
+                print("[RESEND NOTE] Free Resend testing domain (onboarding@resend.dev) restricts email delivery ONLY to your own registered email address. Add custom domain to Resend OR add MAIL_USERNAME & MAIL_PASSWORD (Gmail SMTP) to send to any recipient.")
         except Exception as e:
             print(f"[RESEND ERROR] {e}")
 
