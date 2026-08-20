@@ -95,14 +95,16 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
 
     # 1. Try Brevo HTTPS API (100% Free - 300 emails/day to ANY recipient in the world over HTTPS port 443!)
     if brevo_key:
+        brevo_key_clean = brevo_key.strip("'\" \t\r\n")
         try:
             url = "https://api.brevo.com/v3/smtp/email"
             headers = {
-                "api-key": brevo_key,
+                "api-key": brevo_key_clean,
                 "Content-Type": "application/json",
+                "Accept": "application/json",
                 "User-Agent": "Portfolio-App/1.0",
             }
-            sender_email_val = (os.environ.get("BREVO_SENDER_EMAIL") or mail_user or os.environ.get("MAIL_RECIPIENT") or "ahmedbosha2566@gmail.com").strip()
+            sender_email_val = (os.environ.get("BREVO_SENDER_EMAIL") or mail_user or os.environ.get("MAIL_RECIPIENT") or "ahmedbosha2566@gmail.com").strip("'\" \t\r\n")
             payload = {
                 "sender": {"name": "BoshaCraft", "email": sender_email_val},
                 "to": [{"email": to_email}],
@@ -118,6 +120,9 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 res_body = response.read().decode("utf-8")
                 print(f"[BREVO SUCCESS] Sent '{subject}' → {to_email}: {res_body}")
                 return True, f"Sent via Brevo to {to_email}"
+        except urllib.error.HTTPError as e:
+            err = e.read().decode("utf-8")
+            print(f"[BREVO HTTP ERROR {e.code}] {err}")
         except Exception as e:
             print(f"[BREVO ERROR] {e}")
 
