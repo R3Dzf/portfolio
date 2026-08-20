@@ -104,7 +104,12 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 "Accept": "application/json",
                 "User-Agent": "Portfolio-App/1.0",
             }
-            sender_email_val = (os.environ.get("BREVO_SENDER_EMAIL") or mail_user or os.environ.get("MAIL_RECIPIENT") or "ahmedbosha2566@gmail.com").strip("'\" \t\r\n")
+            sender_email_val = (
+                os.environ.get("BREVO_SENDER_EMAIL")
+                or mail_user
+                or os.environ.get("MAIL_RECIPIENT")
+                or "ahmedyoussefmansourbosha@gmail.com"
+            ).strip("'\" \t\r\n")
             payload = {
                 "sender": {"name": "BoshaCraft", "email": sender_email_val},
                 "to": [{"email": to_email}],
@@ -123,6 +128,21 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
         except urllib.error.HTTPError as e:
             err = e.read().decode("utf-8")
             print(f"[BREVO HTTP ERROR {e.code}] {err}")
+            # Automatic retry with alternative sender email if Brevo rejects sender
+            alt_senders = ["ahmedyoussefmansourbosha@gmail.com", "ahmedbosha2566@gmail.com"]
+            for alt in alt_senders:
+                if alt != sender_email_val:
+                    try:
+                        print(f"[BREVO RETRY] Retrying Brevo with sender '{alt}'...")
+                        payload["sender"]["email"] = alt
+                        data = json.dumps(payload).encode("utf-8")
+                        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                        with urllib.request.urlopen(req, timeout=12) as response:
+                            res_body = response.read().decode("utf-8")
+                            print(f"[BREVO RETRY SUCCESS] Sent '{subject}' → {to_email}: {res_body}")
+                            return True, f"Sent via Brevo to {to_email}"
+                    except Exception as ex:
+                        print(f"[BREVO RETRY ERROR for {alt}] {ex}")
         except Exception as e:
             print(f"[BREVO ERROR] {e}")
 
