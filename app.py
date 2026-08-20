@@ -77,120 +77,178 @@ def delete_upload(filename):
 # Email Forwarding (Resend HTTPS API & Gmail SMTP fallback)
 # ---------------------------------------------------------------------------
 
-def send_via_resend(api_key, to_email, sender_name, sender_email, message_content):
-    """Send email over HTTPS via Resend API (Never blocked by cloud firewalls)."""
-    url = "https://api.resend.com/emails"
-    headers = {
-        "Authorization": f"Bearer {api_key.strip()}",
-        "Content-Type": "application/json",
-        "User-Agent": "Portfolio-App/1.0",
-    }
-    payload = {
-        "from": "Portfolio Contact <onboarding@resend.dev>",
-        "to": [to_email],
-        "subject": f"🔔 New Portfolio Message from {sender_name}",
-        "reply_to": sender_email if sender_email else None,
-        "html": f"""
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
-            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
-            <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
-                <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
-                <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
-            </div>
-            <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
-                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
-            </div>
-            <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
-                Sent automatically from your Ahmed Bosha Portfolio Web App
-            </p>
-        </div>
-        """,
-    }
-
-    try:
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=12) as response:
-            res_body = response.read().decode("utf-8")
-            print(f"[RESEND SUCCESS] Forwarded to {to_email}: {res_body}")
-            return True, f"Sent via Resend API to {to_email}"
-    except urllib.error.HTTPError as e:
-        err = e.read().decode("utf-8")
-        print(f"[RESEND HTTP ERROR] {err}")
-        return False, f"Resend API Error: {err}"
-    except Exception as e:
-        print(f"[RESEND ERROR] {e}")
-        return False, f"Resend Connection Error: {e}"
-
-
-def send_email_core(sender_name, sender_email, message_content, recipient_email=None):
-    """Core function to send email via HTTPS API (Resend) or Gmail SMTP fallback."""
+def send_custom_email(to_email, subject, html_body, reply_to=None):
+    """Core unified email sender: Tries Resend API (HTTPS), then falls back to Gmail SMTP (SSL/TLS)."""
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
     mail_user = os.environ.get("MAIL_USERNAME", "").strip()
     mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
 
-    to_email = (recipient_email or os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
+    if not to_email:
+        to_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
 
+    # 1. Try Resend HTTPS API if key configured
     if resend_key:
-        return send_via_resend(resend_key, to_email, sender_name, sender_email, message_content)
-
-    if not mail_user or not mail_pass:
-        return False, "Neither RESEND_API_KEY nor MAIL_USERNAME/PASSWORD are configured in environment."
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"🔔 New Portfolio Message from {sender_name}"
-    msg["From"] = f"Portfolio <{mail_user}>"
-    msg["To"] = to_email
-    if sender_email:
-        msg["Reply-To"] = sender_email.strip()
-
-    html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 28px; border: 1px solid #28283c;">
-        <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">📬 New Message on Your Portfolio</h2>
-        <div style="background: #202030; padding: 16px; border-radius: 10px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.06);">
-            <p style="margin: 0 0 10px 0; font-size: 15px;"><strong>Sender:</strong> {sender_name}</p>
-            <p style="margin: 0; font-size: 15px;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #6c63ff; text-decoration: none;">{sender_email or 'Not provided'}</a></p>
-        </div>
-        <div style="background: #0c0c12; padding: 18px; border-radius: 10px; border-left: 4px solid #6c63ff;">
-            <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
-        </div>
-        <p style="font-size: 12px; color: #8e8ea6; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">
-            Sent automatically from your Ahmed Bosha Portfolio Web App
-        </p>
-    </div>
-    """
-    msg.attach(MIMEText(html, "html"))
-
-    try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
-        server.login(mail_user, mail_pass)
-        server.send_message(msg)
-        server.quit()
-        print(f"[MAIL SUCCESS (SSL 465)] Notification forwarded to {to_email}")
-        return True, f"Sent via SSL to {to_email}"
-    except Exception as e_ssl:
         try:
-            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
-            server.starttls()
+            url = "https://api.resend.com/emails"
+            headers = {
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "Portfolio-App/1.0",
+            }
+            payload = {
+                "from": "BoshaCraft <onboarding@resend.dev>",
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body,
+            }
+            if reply_to:
+                payload["reply_to"] = reply_to.strip()
+
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_body = response.read().decode("utf-8")
+                print(f"[RESEND SUCCESS] Sent '{subject}' → {to_email}: {res_body}")
+                return True, f"Sent via Resend to {to_email}"
+        except urllib.error.HTTPError as e:
+            err = e.read().decode("utf-8")
+            print(f"[RESEND HTTP ERROR] {err}")
+        except Exception as e:
+            print(f"[RESEND ERROR] {e}")
+
+    # 2. Try Gmail SMTP Fallback (SSL port 465 or TLS port 587)
+    if mail_user and mail_pass:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"BoshaCraft <{mail_user}>"
+        msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to.strip()
+        msg.attach(MIMEText(html_body, "html"))
+
+        try:
+            server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
             server.login(mail_user, mail_pass)
             server.send_message(msg)
             server.quit()
-            print(f"[MAIL SUCCESS (TLS 587)] Notification forwarded to {to_email}")
-            return True, f"Sent via TLS to {to_email}"
-        except Exception as e_tls:
-            err_msg = f"Network is blocking SMTP ports on Render Free. Please use RESEND_API_KEY. Details: {e_ssl}"
-            print(f"[MAIL ERROR] {err_msg}")
-            return False, err_msg
+            print(f"[SMTP SSL SUCCESS] Sent '{subject}' → {to_email}")
+            return True, f"Sent via SMTP SSL to {to_email}"
+        except Exception as e_ssl:
+            try:
+                server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+                server.starttls()
+                server.login(mail_user, mail_pass)
+                server.send_message(msg)
+                server.quit()
+                print(f"[SMTP TLS SUCCESS] Sent '{subject}' → {to_email}")
+                return True, f"Sent via SMTP TLS to {to_email}"
+            except Exception as e_tls:
+                err_msg = f"SMTP Error: {e_tls}"
+                print(f"[SMTP ERROR] {err_msg}")
+                return False, err_msg
+
+    print(f"[EMAIL SIMULATION] (No API Key or SMTP credentials set) To: {to_email} | Subject: {subject}")
+    return False, "Neither RESEND_API_KEY nor MAIL_USERNAME/PASSWORD are configured."
 
 
-def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
-    """Fire and forget email notification thread."""
+def send_email_async(to_email, subject, html_body, reply_to=None):
+    """Fire-and-forget background thread for sending email asynchronously."""
     thread = threading.Thread(
-        target=send_email_core,
-        args=(sender_name, sender_email, message_content, recipient_email),
+        target=send_custom_email,
+        args=(to_email, subject, html_body, reply_to),
     )
     thread.daemon = True
     thread.start()
+
+
+def send_otp_email(to_email, full_name, otp_code):
+    """Send beautiful OTP verification code email."""
+    subject = f"🔐 Your BoshaCraft Verification Code: {otp_code}"
+    html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
+        <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 32px 28px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">Account Verification System</p>
+        </div>
+        <div style="padding: 32px 28px;">
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">Welcome, {full_name}! 👋</h2>
+            <p style="font-size: 15px; line-height: 1.7; color: #a0a0b8; margin-bottom: 24px;">
+                Thank you for creating your engineering portfolio. Please use the 6-digit verification code below to activate your account:
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="display: inline-block; background: #161722; border: 2px solid #6c63ff; border-radius: 16px; padding: 20px 40px; box-shadow: 0 10px 30px rgba(108, 99, 255, 0.25);">
+                    <span style="font-size: 3rem; font-weight: 900; letter-spacing: 14px; color: #6c63ff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">{otp_code}</span>
+                </div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px 18px; margin: 24px 0; text-align: center;">
+                <p style="margin: 0; font-size: 14px; color: #fbbf24; font-weight: 600;">
+                    ⏱ Code Expires in 5 Minutes
+                </p>
+            </div>
+            <p style="font-size: 13px; color: #6e6e86; line-height: 1.6; text-align: center; margin-top: 28px; border-top: 1px solid #1f2030; padding-top: 20px;">
+                If you did not request this registration, you can safely ignore this email.
+            </p>
+        </div>
+    </div>
+    """
+    send_email_async(to_email, subject, html)
+
+
+def send_password_reset_email(to_email, username, reset_url):
+    """Send beautiful password reset email."""
+    subject = "🔒 Reset Your BoshaCraft Password"
+    html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%); padding: 32px 28px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">Password Recovery Center</p>
+        </div>
+        <div style="padding: 32px 28px;">
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">Password Reset Request</h2>
+            <p style="font-size: 15px; line-height: 1.7; color: #a0a0b8; margin-bottom: 24px;">
+                Hi <strong>{username}</strong>, we received a request to reset your portfolio password. Click the button below to set a new password:
+            </p>
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35);">
+                    🔒 Reset My Password
+                </a>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 18px; margin: 24px 0; word-break: break-all; font-size: 12px; color: #8e8ea6;">
+                <strong>Direct Link:</strong> <a href="{reset_url}" style="color: #ef4444; text-decoration: underline;">{reset_url}</a>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 12px 16px; text-align: center;">
+                <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 600;">
+                    ⏱ Link Expires in 15 Minutes
+                </p>
+            </div>
+        </div>
+    </div>
+    """
+    send_email_async(to_email, subject, html)
+
+
+def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
+    """Send portfolio contact notification email."""
+    subject = f"🔔 New Portfolio Message from {sender_name}"
+    html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%); padding: 32px 28px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">New Contact Form Submission</p>
+        </div>
+        <div style="padding: 32px 28px;">
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">📬 You Have a New Message</h2>
+            <div style="background: #161722; padding: 18px; border-radius: 12px; margin: 20px 0; border: 1px solid rgba(255, 255, 255, 0.08);">
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #ffffff;"><strong>From:</strong> {sender_name}</p>
+                <p style="margin: 0; font-size: 15px; color: #10b981;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #10b981; text-decoration: underline;">{sender_email or 'Not provided'}</a></p>
+            </div>
+            <div style="background: #08090e; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
+            </div>
+        </div>
+    </div>
+    """
+    send_email_async(recipient_email, subject, html, reply_to=sender_email)
 
 
 # ---------------------------------------------------------------------------
@@ -902,49 +960,14 @@ def auth_register():
         session["pending_email"] = email
         session["pending_full_name"] = full_name
 
-        # Send OTP email in background
-        otp_html_body = f"""
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
-            <h2 style="color: #6c63ff; margin-top: 0; font-size: 20px;">🔐 Verify Your BoshaCraft Account</h2>
-            <p style="font-size: 15px; line-height: 1.7; color: #c0c0d0;">Hi <strong>{full_name}</strong>, your verification code is:</p>
-            <div style="text-align: center; margin: 24px 0;">
-                <div style="display: inline-block; background: #202030; border: 2px solid #6c63ff; border-radius: 14px; padding: 18px 36px;">
-                    <span style="font-size: 2.8rem; font-weight: 900; letter-spacing: 12px; color: #6c63ff; font-family: monospace;">{otp_code}</span>
-                </div>
-            </div>
-            <p style="font-size: 14px; color: #8e8ea6; text-align: center;">⏱ This code expires in <strong style="color: #f59e0b;">5 minutes</strong>.</p>
-            <p style="font-size: 13px; color: #6e6e86; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">If you didn't create a BoshaCraft account, please ignore this email.</p>
-        </div>
-        """
-
-        def _send_otp():
-            try:
-                resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-                if resend_key:
-                    url = "https://api.resend.com/emails"
-                    headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
-                    payload = {
-                        "from": "BoshaCraft <onboarding@resend.dev>",
-                        "to": [email],
-                        "subject": f"🔐 Your BoshaCraft Verification Code: {otp_code}",
-                        "html": otp_html_body,
-                    }
-                    data = json.dumps(payload).encode("utf-8")
-                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-                    urllib.request.urlopen(req, timeout=12)
-                    print(f"[OTP EMAIL SENT] Code {otp_code} → {email}")
-                else:
-                    print(f"[OTP CODE] (no email configured) Code for {email}: {otp_code}")
-            except Exception as e:
-                print(f"[OTP EMAIL ERROR] {e}")
-
-        threading.Thread(target=_send_otp, daemon=True).start()
+        # Send OTP email via unified dispatcher (Resend API or Gmail SMTP fallback)
+        send_otp_email(email, full_name, otp_code)
 
         # Mask email for display
         parts = email.split("@")
         masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else email
 
-        flash(f"A 6-digit code was sent to your email. Check your inbox!", "success")
+        flash(f"A 6-digit verification code was sent to your email ({masked}). Check your inbox!", "success")
         return render_template("auth/verify_otp.html", masked_email=masked)
 
     return render_template("auth/register.html")
@@ -1033,44 +1056,12 @@ def auth_resend_otp():
     )
     db.commit()
 
-    otp_html_body = f"""
-    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
-        <h2 style="color: #6c63ff; margin-top: 0;">🔐 New Verification Code</h2>
-        <div style="text-align: center; margin: 24px 0;">
-            <div style="display: inline-block; background: #202030; border: 2px solid #6c63ff; border-radius: 14px; padding: 18px 36px;">
-                <span style="font-size: 2.8rem; font-weight: 900; letter-spacing: 12px; color: #6c63ff; font-family: monospace;">{otp_code}</span>
-            </div>
-        </div>
-        <p style="font-size: 14px; color: #8e8ea6; text-align: center;">⏱ Valid for 5 minutes.</p>
-    </div>
-    """
-
-    def _resend():
-        try:
-            resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-            if resend_key:
-                url = "https://api.resend.com/emails"
-                headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
-                payload = {
-                    "from": "BoshaCraft <onboarding@resend.dev>",
-                    "to": [user["email"]],
-                    "subject": f"🔐 Your New Verification Code: {otp_code}",
-                    "html": otp_html_body,
-                }
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-                urllib.request.urlopen(req, timeout=12)
-                print(f"[OTP RESEND] New code {otp_code} → {user['email']}")
-            else:
-                print(f"[OTP RESEND] (no email config) Code: {otp_code}")
-        except Exception as e:
-            print(f"[OTP RESEND ERROR] {e}")
-
-    threading.Thread(target=_resend, daemon=True).start()
+    full_name = session.get("pending_full_name", user["username"])
+    send_otp_email(user["email"], full_name, otp_code)
 
     parts = user["email"].split("@")
     masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
-    flash("New verification code sent! Check your email.", "success")
+    flash("New verification code sent! Check your email inbox.", "success")
     return render_template("auth/verify_otp.html", masked_email=masked)
 
 
@@ -1906,42 +1897,8 @@ def auth_forgot_password():
             db.commit()
 
             reset_url = url_for("auth_reset_password", token=reset_token, _external=True)
-            reset_html = f"""
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; background: #161622; color: #f0f0f8; border-radius: 14px; padding: 32px; border: 1px solid #28283c;">
-                <h2 style="color: #6c63ff; margin-top: 0;">🔒 Password Reset Request</h2>
-                <p style="font-size: 15px; line-height: 1.7; color: #c0c0d0;">Hi <strong>{user['username']}</strong>, click the button below to reset your password. This link expires in <strong style="color: #f59e0b;">15 minutes</strong>.</p>
-                <div style="text-align: center; margin: 28px 0;">
-                    <a href="{reset_url}" style="display: inline-block; background: #6c63ff; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 16px;">Reset My Password</a>
-                </div>
-                <p style="font-size: 12px; color: #6e6e86; word-break: break-all;">Or copy this link: {reset_url}</p>
-                <p style="font-size: 13px; color: #6e6e86; margin-top: 24px; text-align: center; border-top: 1px solid #28283c; padding-top: 16px;">If you didn't request this, please ignore this email.</p>
-            </div>
-            """
+            send_password_reset_email(email, user["username"], reset_url)
 
-            def _send_reset(to_email, html_body, username_val):
-                try:
-                    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-                    if resend_key:
-                        import urllib.request as _ur
-                        import json as _json
-                        url_api = "https://api.resend.com/emails"
-                        headers = {"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
-                        payload = {
-                            "from": "BoshaCraft <onboarding@resend.dev>",
-                            "to": [to_email],
-                            "subject": "🔒 Reset Your BoshaCraft Password",
-                            "html": html_body,
-                        }
-                        req = _ur.Request(url_api, data=_json.dumps(payload).encode(), headers=headers, method="POST")
-                        _ur.urlopen(req, timeout=12)
-                        print(f"[RESET EMAIL SENT] → {to_email}")
-                    else:
-                        send_email_core("BoshaCraft Security", "noreply@portfolio.local", f"Password reset link: {reset_url}", recipient_email=to_email)
-                        print(f"[RESET EMAIL via SMTP] → {to_email}")
-                except Exception as e:
-                    print(f"[RESET EMAIL ERROR] {e}")
-
-            threading.Thread(target=_send_reset, args=(email, reset_html, user["username"]), daemon=True).start()
             flash("✅ Password reset link sent to your email! Check your inbox.", "success")
             return redirect(url_for("admin_login"))
         else:
