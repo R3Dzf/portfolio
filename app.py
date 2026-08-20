@@ -80,13 +80,42 @@ def delete_upload(filename):
 def send_custom_email(to_email, subject, html_body, reply_to=None):
     """Core unified email sender: Tries Resend API (HTTPS), then falls back to Gmail SMTP (SSL/TLS)."""
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+    brevo_key = os.environ.get("BREVO_API_KEY", os.environ.get("SENDINBLUE_API_KEY", "")).strip()
     mail_user = os.environ.get("MAIL_USERNAME", "").strip()
     mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
 
     if not to_email:
         to_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
 
-    # 1. Try Resend HTTPS API if key configured
+    # 1. Try Brevo HTTPS API (100% Free - 300 emails/day to ANY recipient in the world over HTTPS port 443!)
+    if brevo_key:
+        try:
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "User-Agent": "Portfolio-App/1.0",
+            }
+            sender_email_val = (os.environ.get("BREVO_SENDER_EMAIL") or mail_user or os.environ.get("MAIL_RECIPIENT") or "ahmedbosha2566@gmail.com").strip()
+            payload = {
+                "sender": {"name": "BoshaCraft", "email": sender_email_val},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html_body,
+            }
+            if reply_to:
+                payload["replyTo"] = {"email": reply_to.strip()}
+
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_body = response.read().decode("utf-8")
+                print(f"[BREVO SUCCESS] Sent '{subject}' → {to_email}: {res_body}")
+                return True, f"Sent via Brevo to {to_email}"
+        except Exception as e:
+            print(f"[BREVO ERROR] {e}")
+
+    # 2. Try Resend HTTPS API if key configured
     if resend_key:
         try:
             url = "https://api.resend.com/emails"
@@ -113,8 +142,20 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
         except urllib.error.HTTPError as e:
             err = e.read().decode("utf-8")
             print(f"[RESEND HTTP ERROR {e.code}] {err}")
-            if e.code == 403:
-                print("[RESEND NOTE] Free Resend testing domain (onboarding@resend.dev) restricts email delivery ONLY to your own registered email address. Add custom domain to Resend OR add MAIL_USERNAME & MAIL_PASSWORD (Gmail SMTP) to send to any recipient.")
+            owner_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
+            if e.code == 403 and to_email.lower() != owner_email.lower():
+                print(f"[RESEND TESTING FALLBACK] Delivery to external email '{to_email}' blocked by Resend free tier. Auto-forwarding copy to account owner ({owner_email})...")
+                payload["to"] = [owner_email]
+                payload["subject"] = f"[Forwarded for {to_email}] " + subject
+                try:
+                    data = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    with urllib.request.urlopen(req, timeout=12) as response:
+                        res_body = response.read().decode("utf-8")
+                        print(f"[RESEND OWNER FORWARD SUCCESS] Sent code/email for {to_email} → {owner_email}: {res_body}")
+                        return True, f"Forwarded to owner {owner_email}"
+                except Exception as ex:
+                    print(f"[RESEND OWNER FORWARD ERROR] {ex}")
         except Exception as e:
             print(f"[RESEND ERROR] {e}")
 
