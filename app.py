@@ -80,7 +80,13 @@ def delete_upload(filename):
 def send_custom_email(to_email, subject, html_body, reply_to=None):
     """Core unified email sender: Tries Resend API (HTTPS), then falls back to Gmail SMTP (SSL/TLS)."""
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-    brevo_key = os.environ.get("BREVO_API_KEY", os.environ.get("SENDINBLUE_API_KEY", "")).strip()
+    brevo_key = (
+        os.environ.get("BREVO_API_KEY")
+        or os.environ.get("BREVO_KEY")
+        or os.environ.get("SENDINBLUE_API_KEY")
+        or os.environ.get("BREVO_API_TOKEN")
+        or ""
+    ).strip()
     mail_user = os.environ.get("MAIL_USERNAME", "").strip()
     mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
 
