@@ -142,20 +142,6 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
         except urllib.error.HTTPError as e:
             err = e.read().decode("utf-8")
             print(f"[RESEND HTTP ERROR {e.code}] {err}")
-            owner_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
-            if e.code == 403 and to_email.lower() != owner_email.lower():
-                print(f"[RESEND TESTING FALLBACK] Delivery to external email '{to_email}' blocked by Resend free tier. Auto-forwarding copy to account owner ({owner_email})...")
-                payload["to"] = [owner_email]
-                payload["subject"] = f"[Forwarded for {to_email}] " + subject
-                try:
-                    data = json.dumps(payload).encode("utf-8")
-                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-                    with urllib.request.urlopen(req, timeout=12) as response:
-                        res_body = response.read().decode("utf-8")
-                        print(f"[RESEND OWNER FORWARD SUCCESS] Sent code/email for {to_email} → {owner_email}: {res_body}")
-                        return True, f"Forwarded to owner {owner_email}"
-                except Exception as ex:
-                    print(f"[RESEND OWNER FORWARD ERROR] {ex}")
         except Exception as e:
             print(f"[RESEND ERROR] {e}")
 
