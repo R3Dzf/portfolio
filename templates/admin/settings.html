@@ -73,7 +73,7 @@
                 <!-- Profile Photo -->
                 <div class="form-group">
                     <label class="form-label">Profile Photo</label>
-                    {% if settings.profile_photo %}
+                    {% if settings and settings.profile_photo %}
                     <div class="photo-preview">
                         <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}"
                              alt="Current profile photo" class="photo-preview__img">
@@ -88,18 +88,22 @@
                     </div>
                     <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
                     {% else %}
-                    <label class="photo-upload__label" for="profile_photo">
-                        <span class="photo-upload__icon">+</span>
-                        <span class="photo-upload__text">Click to upload a profile photo (PNG, JPG, WEBP)</span>
-                    </label>
+                    <div class="photo-preview" style="background: rgba(255,255,255,0.02);">
+                        <img src="{{ url_for('static', filename='images/default_avatar.png') }}"
+                             alt="Default avatar" class="photo-preview__img" style="border-color: var(--clr-border);">
+                        <div class="photo-preview__actions">
+                            <label class="btn btn--sm btn--primary" for="profile_photo">Upload Custom Photo</label>
+                        </div>
+                    </div>
                     <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
                     {% endif %}
                 </div>
 
+                {% if session.get('role') == 'admin' %}
                 <!-- ============================== -->
                 <!-- SECTION 2: Footer & Ownership  -->
                 <!-- ============================== -->
-                <p class="form-section-label" style="margin-top: 2rem;">2. Footer &amp; Copyright Ownership</p>
+                <p class="form-section-label" style="margin-top: 2rem;">2. Footer &amp; Copyright Ownership (Super Admin Only)</p>
 
                 <div class="form-group">
                     <label class="form-label" for="footer_text">Footer Copyright Text</label>
@@ -107,6 +111,7 @@
                            value="{{ settings.footer_text or '© 2026 Ahmed Bosha' }}"
                            placeholder="e.g. © 2026 Ahmed Bosha">
                 </div>
+                {% endif %}
 
                 <!-- ============================== -->
                 <!-- SECTION 3: Social & Contact    -->

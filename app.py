@@ -223,31 +223,31 @@ def send_email_async(to_email, subject, html_body, reply_to=None):
 
 
 def send_otp_email(to_email, full_name, otp_code):
-    """Send beautiful OTP verification code email."""
+    """Send beautiful mobile-responsive OTP verification code email."""
     subject = f"🔐 Your BoshaCraft Verification Code: {otp_code}"
     html = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
-        <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 32px 28px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
-            <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">Account Verification System</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 480px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 16px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box;">
+        <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 24px 16px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Account Verification System</p>
         </div>
-        <div style="padding: 32px 28px;">
-            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">Welcome, {full_name}! 👋</h2>
-            <p style="font-size: 15px; line-height: 1.7; color: #a0a0b8; margin-bottom: 24px;">
-                Thank you for creating your engineering portfolio. Please use the 6-digit verification code below to activate your account:
+        <div style="padding: 24px 16px; box-sizing: border-box;">
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Welcome, {full_name}! 👋</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #a0a0b8; margin-bottom: 20px; text-align: center;">
+                Please use the 6-digit verification code below to activate your portfolio account:
             </p>
-            <div style="text-align: center; margin: 30px 0;">
-                <div style="display: inline-block; background: #161722; border: 2px solid #6c63ff; border-radius: 16px; padding: 20px 40px; box-shadow: 0 10px 30px rgba(108, 99, 255, 0.25);">
-                    <span style="font-size: 3rem; font-weight: 900; letter-spacing: 14px; color: #6c63ff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">{otp_code}</span>
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="display: inline-block; width: 100%; max-width: 280px; background: #161722; border: 2px solid #6c63ff; border-radius: 14px; padding: 14px 10px; box-shadow: 0 8px 24px rgba(108, 99, 255, 0.25); box-sizing: border-box;">
+                    <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #6c63ff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; display: block; text-align: center;">{otp_code}</span>
                 </div>
             </div>
-            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px 18px; margin: 24px 0; text-align: center;">
-                <p style="margin: 0; font-size: 14px; color: #fbbf24; font-weight: 600;">
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; margin: 20px 0; text-align: center;">
+                <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 600;">
                     ⏱ Code Expires in 5 Minutes
                 </p>
             </div>
-            <p style="font-size: 13px; color: #6e6e86; line-height: 1.6; text-align: center; margin-top: 28px; border-top: 1px solid #1f2030; padding-top: 20px;">
-                If you did not request this registration, you can safely ignore this email.
+            <p style="font-size: 12px; color: #6e6e86; line-height: 1.5; text-align: center; margin-top: 24px; border-top: 1px solid #1f2030; padding-top: 16px;">
+                If you did not request this registration, please ignore this email.
             </p>
         </div>
     </div>
@@ -772,14 +772,17 @@ def init_db():
 def inject_globals():
     try:
         user_id = session.get("user_id", 1)
-        settings = get_settings(user_id=user_id)
-        unread = get_db().execute(
+        db = get_db()
+        settings = get_settings(user_id=user_id, db=db)
+        master_settings = get_settings(user_id=1, db=db)
+        unread = db.execute(
             "SELECT COUNT(*) FROM messages WHERE user_id = ? AND is_read = 0", (user_id,)
         ).fetchone()[0]
     except Exception:
         settings = None
+        master_settings = None
         unread = 0
-    return dict(settings=settings, unread_count=unread)
+    return dict(settings=settings, master_settings=master_settings, unread_count=unread)
 
 
 # ---------------------------------------------------------------------------
@@ -914,18 +917,27 @@ def user_portfolio(username):
 
 @app.route("/contact", methods=["POST"])
 def contact():
-    """Handle contact form submission (public, supports AJAX)."""
+    """Handle contact form submission (public, supports AJAX, per-tenant routing)."""
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
 
+    target_user_id = 1
     if request.is_json:
         data = request.get_json() or {}
         sender_name = data.get("sender_name", "").strip()
         sender_email = data.get("sender_email", "").strip() or None
         message = data.get("message", "").strip()
+        try:
+            target_user_id = int(data.get("target_user_id") or request.args.get("user_id") or 1)
+        except Exception:
+            target_user_id = 1
     else:
         sender_name = request.form.get("sender_name", "").strip()
         sender_email = request.form.get("sender_email", "").strip() or None
         message = request.form.get("message", "").strip()
+        try:
+            target_user_id = int(request.form.get("target_user_id") or request.args.get("user_id") or 1)
+        except Exception:
+            target_user_id = 1
 
     if not sender_name or not sender_email or not message:
         if is_ajax:
@@ -935,19 +947,22 @@ def contact():
 
     db = get_db()
     db.execute(
-        "INSERT INTO messages (sender_name, sender_email, message) VALUES (?, ?, ?)",
-        (sender_name, sender_email, message),
+        "INSERT INTO messages (user_id, sender_name, sender_email, message) VALUES (?, ?, ?, ?)",
+        (target_user_id, sender_name, sender_email, message),
     )
     db.commit()
 
-    settings = get_settings(db)
-    recipient = settings["email"] if settings and settings["email"] else None
+    # Find recipient email for target_user_id
+    target_user = db.execute("SELECT email FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    target_settings = get_settings(user_id=target_user_id, db=db)
+
+    recipient = (target_settings["email"] if target_settings and target_settings["email"] else None) or (target_user["email"] if target_user and target_user["email"] else None)
     notify_new_message(sender_name, sender_email, message, recipient)
 
     if is_ajax:
-        return jsonify({"success": True, "message": "Message sent! I'll get back to you soon."})
+        return jsonify({"success": True, "message": "Message sent! Thank you for reaching out."})
 
-    flash("Message sent! I'll get back to you soon.", "success")
+    flash("Message sent! Thank you for reaching out.", "success")
     return redirect(url_for("index") + "#contact")
 
 
@@ -1002,15 +1017,15 @@ def auth_register():
 
         # Seed site_settings for new user
         db.execute(
-            """INSERT INTO site_settings (user_id, name, logo_text, site_title, bio, footer_text, theme_name)
-               VALUES (?, ?, ?, ?, ?, ?, 'default')""",
+            """INSERT INTO site_settings (user_id, name, logo_text, site_title, bio, email, github_url, theme_name)
+               VALUES (?, ?, ?, ?, ?, ?, NULL, 'default')""",
             (
                 new_user_id,
                 full_name,
                 username,
                 f"{full_name} — Engineering & Software Portfolio",
                 f"Welcome to my portfolio! I build software and innovative engineering solutions.",
-                f"© 2026 {full_name}",
+                email,
             ),
         )
         db.commit()

@@ -80,10 +80,9 @@
                  alt="{{ settings.name }}" class="hero__photo">
         </div>
         {% else %}
-        <div class="hero__photo-wrap hero__photo-wrap--placeholder reveal">
-            <div class="hero__photo-initials">
-                {{ settings.name[:2].upper() if settings and settings.name else 'AB' }}
-            </div>
+        <div class="hero__photo-wrap reveal">
+            <img src="{{ url_for('static', filename='images/default_avatar.png') }}"
+                 alt="{{ settings.name if settings else 'Profile' }}" class="hero__photo">
         </div>
         {% endif %}
 
@@ -462,13 +461,12 @@
 
 <!-- ===== 10. Call to Action & Contact ===== -->
 <section class="section" id="contact">
-    <div class="container">
-        <h2 class="section__title reveal">Let's Connect</h2>
         <p class="section__subtitle reveal">Have an idea, an engineering project, or want to collaborate?</p>
 
         <div class="contact-grid">
             {# AJAX Contact Form #}
             <form class="contact-form reveal" id="contactForm" method="POST" action="{{ url_for('contact') }}">
+                <input type="hidden" name="target_user_id" value="{{ settings.user_id if settings else 1 }}">
                 <div id="formFeedback" style="display:none; margin-bottom: var(--space-md);"></div>
                 <div class="form-row">
                     <div class="form-group">
@@ -485,7 +483,7 @@
                 <div class="form-group">
                     <label class="form-label" for="message">Message <span class="required">*</span></label>
                     <textarea class="form-input form-textarea" id="message" name="message"
-                              rows="5" placeholder="Your message or project inquiry..." required></textarea>
+                               rows="5" placeholder="Your message or project inquiry..." required></textarea>
                 </div>
                 <button type="submit" id="submitBtn" class="btn btn--primary btn--lg">
                     Send Message
@@ -541,7 +539,11 @@
 <!-- ===== Footer ===== -->
 <footer class="footer">
     <div class="container footer__inner">
-        <p>{{ settings.footer_text if settings and settings.footer_text else ('&copy; 2026 ' ~ (settings.name if settings and settings.name else 'Ahmed Bosha')) }}</p>
+        <p>
+            <a href="https://ahmed-bosha.onrender.com" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; transition: color var(--transition);" onmouseover="this.style.color='var(--clr-primary)'" onmouseout="this.style.color='inherit'">
+                {{ master_settings.footer_text if master_settings and master_settings.footer_text else '© 2026 Ahmed R3Dz' }}
+            </a>
+        </p>
         <p class="footer__credit">
             <a href="{{ url_for('admin_dashboard') }}" class="footer__admin-link">Admin CMS</a>
         </p>

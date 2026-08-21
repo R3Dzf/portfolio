@@ -58,6 +58,8 @@ body {
         <div class="bento-box col-span-8" style="display: flex; align-items: center; gap: 2rem;">
             {% if settings and settings.profile_photo %}
             <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}" alt="{{ settings.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bento-accent);">
+            {% else %}
+            <img src="{{ url_for('static', filename='images/default_avatar.png') }}" alt="{{ settings.name if settings else 'Profile' }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bento-accent);">
             {% endif %}
             <div>
                 <span style="font-size: 0.85rem; font-weight: 700; color: var(--bento-accent); text-transform: uppercase; letter-spacing: 1px;">🍱 Modular Bento Portfolio</span>
