@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Account Profile & Security — {{ settings.name if settings else 'CMS' }}{% endblock %}
+
+{% block body %}
+{% include "admin/nav.html" %}
+
+<main class="admin-main">
+    <div class="container" style="max-width: 800px;">
+        <div class="admin-header">
+            <div>
+                <h1 class="admin-header__title">👤 Account Profile &amp; Security</h1>
+                <p class="admin-header__subtitle">Manage your login credentials, username, and contact email.</p>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div style="margin-bottom: 1.5rem;">
+            {% for cat, msg in messages %}
+            <div style="padding: 12px 16px; border-radius: 10px; margin-bottom: 8px; font-size: 0.9rem;
+                {% if cat == 'danger' %}background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #f87171;
+                {% elif cat == 'success' %}background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #4ade80;
+                {% elif cat == 'warning' %}background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24;
+                {% else %}background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.3); color: var(--clr-primary);{% endif %}">
+                {{ msg }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Account Info Form -->
+        <form method="POST" action="{{ url_for('admin_profile') }}" class="admin-card" style="margin-bottom: 2rem;">
+            <input type="hidden" name="action" value="update_account">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--clr-text);">
+                ✏️ Account Credentials
+            </h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input class="form-input" type="text" id="username" name="username"
+                           value="{{ user.username }}" minlength="3" required>
+                    <small style="color: var(--clr-text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
+                        Public Portfolio URL: /u/{{ user.username }}
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">Gmail / Account Email</label>
+                    <input class="form-input" type="email" id="email" name="email"
+                           value="{{ user.email }}" required>
+                    <small style="color: var(--clr-text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
+                        Changing email will send a 6-digit OTP code to verify the new email.
+                    </small>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.25rem; text-align: right;">
+                <button type="submit" class="btn btn--primary">
+                    Save Account Changes
+                </button>
+            </div>
+        </form>
+
+        <!-- Password Change Form -->
+        <form method="POST" action="{{ url_for('admin_profile') }}" class="admin-card">
+            <input type="hidden" name="action" value="update_password">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--clr-text);">
+                🔒 Change Password
+            </h2>
+
+            <div class="form-group">
+                <label class="form-label" for="current_password">Current Password</label>
+                <input class="form-input" type="password" id="current_password" name="current_password" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="new_password">New Password</label>
+                    <input class="form-input" type="password" id="new_password" name="new_password" minlength="8" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">Confirm New Password</label>
+                    <input class="form-input" type="password" id="confirm_password" name="confirm_password" minlength="8" required>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.25rem; text-align: right;">
+                <button type="submit" class="btn btn--primary">
+                    Update Password
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
+
+{% include "admin/footer.html" %}
+{% endblock %}

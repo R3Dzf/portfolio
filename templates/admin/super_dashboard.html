@@ -77,7 +77,7 @@
                         <th>Role &amp; Plan</th>
                         <th>Status</th>
                         <th>Joined Date</th>
-                        <th style="width: 220px; text-align: right;">Actions</th>
+                        <th style="width: 340px; text-align: right;">Master Controls</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,16 +108,17 @@
                         </td>
                         <td style="font-size: 0.82rem; color: var(--clr-text-muted);">{{ u.created_at[:10] if u.created_at else '--' }}</td>
                         <td>
-                            <div class="cell-actions" style="justify-content: flex-end;">
-                                <a href="{% if u.id == 1 %}{{ url_for('index') }}{% else %}{{ url_for('user_portfolio', username=u.username) }}{% endif %}" target="_blank" class="btn btn--sm btn--outline" title="View Portfolio">
-                                    👁️ View
+                            <div class="cell-actions" style="justify-content: flex-end; gap: 6px;">
+                                <button type="button" class="btn btn--sm btn--primary" onclick="openEditUserModal({{ u.id }}, '{{ u.username }}', '{{ u.email }}', '{{ u.role }}', '{{ u.plan_tier }}', '{{ u.account_status }}')" title="Edit User Details & Email">
+                                    ✏️ Edit
+                                </button>
+                                <a href="{{ url_for('super_admin_impersonate', target_user_id=u.id) }}" class="btn btn--sm btn--outline" title="Login as this User">
+                                    🔑 Manage
+                                </a>
+                                <a href="{% if u.id == 1 %}{{ url_for('index') }}{% else %}{{ url_for('user_portfolio', username=u.username) }}{% endif %}" target="_blank" class="btn btn--sm btn--dark" title="View Portfolio">
+                                    👁️
                                 </a>
                                 {% if u.id != 1 %}
-                                <form method="POST" action="{{ url_for('super_admin_toggle_status', target_user_id=u.id) }}" style="display: inline;">
-                                    <button type="submit" class="btn btn--sm {% if u.account_status == 'active' %}btn--danger{% else %}btn--primary{% endif %}">
-                                        {% if u.account_status == 'active' %}Ban{% else %}Activate{% endif %}
-                                    </button>
-                                </form>
                                 <form method="POST" action="{{ url_for('super_admin_delete_user', target_user_id=u.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete user &quot;{{ u.username }}&quot; and all their data?');">
                                     <button type="submit" class="btn btn--sm btn--dark" style="color: #ff6b6b;" title="Delete User">
                                         🗑️
@@ -133,6 +134,95 @@
         </div>
         {% endif %}
     </div>
+</main>
+
+<!-- Super Admin Edit User Modal -->
+<div id="editUserModal" class="project-modal" aria-hidden="true">
+    <div class="project-modal__backdrop" onclick="closeEditUserModal()"></div>
+    <div class="project-modal__dialog" style="max-width: 520px; background: #161722; border: 1px solid var(--clr-primary); border-radius: 16px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+            <h2 style="font-size: 1.3rem; font-weight: 700; margin: 0; color: #fff;">👑 Super Admin User Control</h2>
+            <button type="button" onclick="closeEditUserModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <form id="editUserForm" method="POST" action="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="modal_username">Username</label>
+                    <input class="form-input" type="text" id="modal_username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="modal_email">Gmail / Account Email</label>
+                    <input class="form-input" type="email" id="modal_email" name="email" required>
+                    <small style="color: #4ade80; font-size: 0.75rem; display: block; margin-top: 4px;">
+                        ⚡ Direct update (No OTP required for Admin!)
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="modal_password">Reset Password (Optional)</label>
+                <input class="form-input" type="password" id="modal_password" name="new_password" placeholder="Leave empty to keep current password">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="modal_role">Role</label>
+                    <select class="form-input" id="modal_role" name="role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin / Super Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="modal_plan">Plan Tier</label>
+                    <select class="form-input" id="modal_plan" name="plan_tier">
+                        <option value="free">Free Tier</option>
+                        <option value="pro">Pro Tier</option>
+                        <option value="enterprise">Enterprise Tier</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="modal_status">Account Status</label>
+                <select class="form-input" id="modal_status" name="account_status">
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended / Banned</option>
+                </select>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn--outline" onclick="closeEditUserModal()">Cancel</button>
+                <button type="submit" class="btn btn--primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditUserModal(id, username, email, role, plan, status) {
+    const modal = document.getElementById('editUserModal');
+    const form = document.getElementById('editUserForm');
+    
+    form.action = '/super-admin/user/edit/' + id;
+    document.getElementById('modal_username').value = username;
+    document.getElementById('modal_email').value = email;
+    document.getElementById('modal_password').value = '';
+    document.getElementById('modal_role').value = role;
+    document.getElementById('modal_plan').value = plan;
+    document.getElementById('modal_status').value = status;
+    
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+}
+</script>
 </main>
 
 {% include "admin/footer.html" %}

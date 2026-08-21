@@ -1225,40 +1225,187 @@ def super_admin_dashboard():
     )
 
 
-@app.route("/super-admin/user/status/<int:target_user_id>", methods=["POST"])
+@app.route("/super-admin/user/edit/<int:target_user_id>", methods=["POST"])
 @superadmin_required
-def super_admin_toggle_status(target_user_id):
-    if target_user_id == 1:
-        flash("Cannot suspend Super Admin account.", "danger")
-        return redirect(url_for("super_admin_dashboard"))
-    
+def super_admin_edit_user(target_user_id):
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
-    if user:
-        new_status = "suspended" if user["account_status"] == "active" else "active"
-        db.execute("UPDATE users SET account_status = ? WHERE id = ?", (new_status, target_user_id))
-        db.commit()
-        flash(f"User '{user['username']}' status changed to '{new_status}'.", "info")
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    new_username = request.form.get("username", "").strip().lower()
+    new_email = request.form.get("email", "").strip().lower()
+    new_password = request.form.get("new_password", "").strip()
+    new_role = request.form.get("role", user["role"]).strip()
+    new_plan = request.form.get("plan_tier", user["plan_tier"]).strip()
+    new_status = request.form.get("account_status", user["account_status"]).strip()
+
+    if not new_username or not new_email:
+        flash("Username and Email are required.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    # Check unique username
+    existing_u = db.execute("SELECT id FROM users WHERE LOWER(username) = ? AND id != ?", (new_username, target_user_id)).fetchone()
+    if existing_u:
+        flash(f"Username '{new_username}' is already taken by another account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    # Check unique email
+    existing_e = db.execute("SELECT id FROM users WHERE LOWER(email) = ? AND id != ?", (new_email, target_user_id)).fetchone()
+    if existing_e:
+        flash(f"Email '{new_email}' is already used by another account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    # Update user table
+    db.execute(
+        "UPDATE users SET username = ?, email = ?, role = ?, plan_tier = ?, account_status = ? WHERE id = ?",
+        (new_username, new_email, new_role, new_plan, new_status, target_user_id)
+    )
+
+    # Direct email & name sync in site_settings for this user (NO OTP needed!)
+    db.execute("UPDATE site_settings SET email = ? WHERE user_id = ?", (new_email, target_user_id))
+
+    # Update password if provided
+    if new_password:
+        if len(new_password) < 6:
+            flash("New password must be at least 6 characters.", "warning")
+        else:
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_password), target_user_id))
+
+    db.commit()
+    flash(f"✅ User '{new_username}' profile updated successfully (Email: {new_email})!", "success")
     return redirect(url_for("super_admin_dashboard"))
 
 
-@app.route("/super-admin/user/delete/<int:target_user_id>", methods=["POST"])
+@app.route("/super-admin/user/impersonate/<int:target_user_id>")
 @superadmin_required
-def super_admin_delete_user(target_user_id):
-    if target_user_id == 1:
-        flash("Cannot delete Super Admin account.", "danger")
-        return redirect(url_for("super_admin_dashboard"))
-    
+def super_admin_impersonate(target_user_id):
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
-    if user:
-        tables = ["site_settings", "projects", "skills", "experiences", "education", "services", "achievements", "testimonials", "messages"]
-        for table in tables:
-            db.execute(f"DELETE FROM {table} WHERE user_id = ?", (target_user_id,))
-        db.execute("DELETE FROM users WHERE id = ?", (target_user_id,))
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    session["role"] = user["role"]
+    session["admin_logged_in"] = True
+
+    flash(f"🔑 Switched session to manage '{user['username']}' portfolio.", "info")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/profile", methods=["GET", "POST"])
+@login_required
+def admin_profile():
+    user_id = session.get("user_id")
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    settings = get_settings(user_id=user_id, db=db)
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "update_account":
+            new_username = request.form.get("username", "").strip().lower()
+            new_email = request.form.get("email", "").strip().lower()
+
+            if not new_username or not new_email:
+                flash("Username and Email are required.", "danger")
+                return redirect(url_for("admin_profile"))
+
+            # Check unique username
+            existing_u = db.execute("SELECT id FROM users WHERE LOWER(username) = ? AND id != ?", (new_username, user_id)).fetchone()
+            if existing_u:
+                flash("Username is already taken by another account.", "danger")
+                return redirect(url_for("admin_profile"))
+
+            # Update username if changed
+            if new_username != user["username"]:
+                db.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
+                db.commit()
+                session["username"] = new_username
+
+            # Check email change
+            if new_email != user["email"]:
+                existing_e = db.execute("SELECT id FROM users WHERE LOWER(email) = ? AND id != ?", (new_email, user_id)).fetchone()
+                if existing_e:
+                    flash("Email is already used by another account.", "danger")
+                    return redirect(url_for("admin_profile"))
+
+                # Generate 6-digit OTP code for email change verification
+                otp_code = str(random.randint(100000, 999999))
+                otp_exp = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+
+                session["pending_new_email"] = new_email
+                session["email_change_otp"] = otp_code
+                session["email_change_exp"] = otp_exp
+
+                # Send OTP verification code to NEW email address
+                send_otp_email(new_email, user["username"], otp_code)
+
+                flash(f"A 6-digit verification code was sent to your new email ({new_email}). Please verify to complete email update!", "info")
+                return redirect(url_for("auth_verify_email_change"))
+
+            flash("Account profile updated successfully!", "success")
+            return redirect(url_for("admin_profile"))
+
+        elif action == "update_password":
+            current_pass = request.form.get("current_password", "").strip()
+            new_pass = request.form.get("new_password", "").strip()
+            confirm_pass = request.form.get("confirm_password", "").strip()
+
+            if not check_password_hash(user["password_hash"], current_pass):
+                flash("Current password is incorrect.", "danger")
+                return redirect(url_for("admin_profile"))
+
+            if len(new_pass) < 8:
+                flash("New password must be at least 8 characters long.", "danger")
+                return redirect(url_for("admin_profile"))
+
+            if new_pass != confirm_pass:
+                flash("New passwords do not match.", "danger")
+                return redirect(url_for("admin_profile"))
+
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_pass), user_id))
+            db.commit()
+            flash("Password updated successfully!", "success")
+            return redirect(url_for("admin_profile"))
+
+    return render_template("admin/profile.html", user=user, settings=settings, active_tab="profile")
+
+
+@app.route("/verify-email-change", methods=["GET", "POST"])
+@login_required
+def auth_verify_email_change():
+    pending_new_email = session.get("pending_new_email")
+    if not pending_new_email:
+        flash("No email change request pending.", "warning")
+        return redirect(url_for("admin_profile"))
+
+    if request.method == "POST":
+        otp_input = request.form.get("otp", "").strip()
+        expected_otp = session.get("email_change_otp")
+
+        if otp_input != expected_otp:
+            flash("Invalid verification code. Please try again.", "danger")
+            return render_template("auth/verify_email_change.html", pending_email=pending_new_email)
+
+        user_id = session.get("user_id")
+        db = get_db()
+        db.execute("UPDATE users SET email = ? WHERE id = ?", (pending_new_email, user_id))
+        db.execute("UPDATE site_settings SET email = ? WHERE user_id = ?", (pending_new_email, user_id))
         db.commit()
-        flash(f"User '{user['username']}' and all their data deleted permanently.", "success")
-    return redirect(url_for("super_admin_dashboard"))
+
+        session.pop("pending_new_email", None)
+        session.pop("email_change_otp", None)
+        session.pop("email_change_exp", None)
+
+        flash(f"🎉 Email successfully updated to {pending_new_email}!", "success")
+        return redirect(url_for("admin_profile"))
+
+    return render_template("auth/verify_email_change.html", pending_email=pending_new_email)
 
 
 @app.route("/admin")
