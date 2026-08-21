@@ -30,7 +30,20 @@
             <li><a href="#contact">Contact</a></li>
         </ul>
 
-        <div class="navbar__actions">
+        <div class="navbar__actions" style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;">
+                ⚙️ Dashboard
+            </a>
+            {% else %}
+            <a href="{{ url_for('admin_login') }}" class="btn btn--sm btn--outline" style="font-size: 0.82rem; padding: 6px 12px; border-radius: 8px;">
+                Login
+            </a>
+            <a href="{{ url_for('auth_register') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;">
+                Register
+            </a>
+            {% endif %}
+
             <!-- Theme Toggle Button (Light/Dark) -->
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle Theme" title="Toggle Light / Dark Theme">
                 <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="19" height="19">
@@ -447,6 +460,8 @@
 
 <!-- ===== 10. Call to Action & Contact ===== -->
 <section class="section" id="contact">
+    <div class="container">
+        <h2 class="section__title reveal">Let's Connect</h2>
         <p class="section__subtitle reveal">Have an idea, an engineering project, or want to collaborate?</p>
 
         <div class="contact-grid">

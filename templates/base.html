@@ -84,5 +84,24 @@
     {% block body %}{% endblock %}
 
     {% block extra_js %}{% endblock %}
+
+    <!-- Auto-dismiss notifications after 6 seconds -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const alerts = document.querySelectorAll('.flash, [style*="background: rgba("]');
+            alerts.forEach(function(alert) {
+                if (alert.classList.contains('flash') || alert.textContent.includes('Please log in') || alert.textContent.includes('Session expired') || alert.parentNode.classList.contains('admin-main') || alert.parentNode.classList.contains('auth-card')) {
+                    setTimeout(function() {
+                        alert.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                        alert.style.opacity = '0';
+                        alert.style.transform = 'translateY(-10px)';
+                        setTimeout(function() {
+                            if (alert.parentNode) alert.remove();
+                        }, 600);
+                    }, 6000);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

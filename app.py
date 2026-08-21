@@ -1206,8 +1206,20 @@ def admin_logout():
 @superadmin_required
 def super_admin_dashboard():
     db = get_db()
-    users_list = db.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
-    
+    try:
+        users_raw = db.execute("SELECT * FROM users ORDER BY id DESC").fetchall()
+    except Exception:
+        users_raw = db.execute("SELECT * FROM users").fetchall()
+
+    users_list = []
+    for u in users_raw:
+        u_dict = dict(u)
+        u_dict.setdefault("role", "user")
+        u_dict.setdefault("plan_tier", "free")
+        u_dict.setdefault("account_status", "active")
+        u_dict.setdefault("created_at", "")
+        users_list.append(u_dict)
+
     total_users = len(users_list)
     total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
     total_skills = db.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
@@ -1223,6 +1235,47 @@ def super_admin_dashboard():
         total_achievements=total_achievements,
         total_messages=total_messages,
     )
+
+
+@app.route("/super-admin/user/status/<int:target_user_id>", methods=["POST"])
+@superadmin_required
+def super_admin_toggle_status(target_user_id):
+    if target_user_id == 1:
+        flash("Cannot suspend Super Admin account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if user:
+        user_dict = dict(user)
+        current_status = user_dict.get("account_status", "active")
+        new_status = "suspended" if current_status == "active" else "active"
+        db.execute("UPDATE users SET account_status = ? WHERE id = ?", (new_status, target_user_id))
+        db.commit()
+        flash(f"User '{user['username']}' status changed to '{new_status}'.", "info")
+    return redirect(url_for("super_admin_dashboard"))
+
+
+@app.route("/super-admin/user/delete/<int:target_user_id>", methods=["POST"])
+@superadmin_required
+def super_admin_delete_user(target_user_id):
+    if target_user_id == 1:
+        flash("Cannot delete Super Admin account.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if user:
+        tables = ["site_settings", "projects", "skills", "experiences", "education", "services", "achievements", "testimonials", "messages"]
+        for table in tables:
+            try:
+                db.execute(f"DELETE FROM {table} WHERE user_id = ?", (target_user_id,))
+            except Exception:
+                pass
+        db.execute("DELETE FROM users WHERE id = ?", (target_user_id,))
+        db.commit()
+        flash(f"User '{user['username']}' and all their data deleted permanently.", "success")
+    return redirect(url_for("super_admin_dashboard"))
 
 
 @app.route("/super-admin/user/edit/<int:target_user_id>", methods=["POST"])
