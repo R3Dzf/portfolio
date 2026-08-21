@@ -318,9 +318,14 @@ def notify_new_message(sender_name, sender_email, message_content, recipient_ema
 
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
+        g.db = sqlite3.connect(DATABASE, timeout=15.0)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+        try:
+            g.db.execute("PRAGMA journal_mode = WAL")
+            g.db.execute("PRAGMA busy_timeout = 5000")
+        except Exception:
+            pass
     return g.db
 
 
@@ -476,6 +481,13 @@ def init_db():
             is_read      INTEGER DEFAULT 0,
             created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_site_settings_user_id ON site_settings(user_id);
+        CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+        CREATE INDEX IF NOT EXISTS idx_skills_user_id ON skills(user_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
     """)
 
     # Safe Schema Migrations (for backwards compatibility & multi-tenancy)
