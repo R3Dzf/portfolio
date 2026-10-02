@@ -974,13 +974,15 @@ def init_db():
 
 
 def ensure_database():
-    """Create the database on first boot, including Gunicorn deployments."""
+    """Create or migrate the database on boot, including Gunicorn deployments."""
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     database_dir = os.path.dirname(os.path.abspath(DATABASE))
     if database_dir:
         os.makedirs(database_dir, exist_ok=True)
-    if not os.path.exists(DATABASE):
-        init_db()
+
+    # init_db() is idempotent: it creates missing tables/columns and seeds
+    # defaults only when the corresponding tables are empty.
+    init_db()
 
     # If the database was created before ADMIN_PASS was configured, activate
     # the reserved owner account once explicit credentials become available.
