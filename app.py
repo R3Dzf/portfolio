@@ -1553,9 +1553,30 @@ def super_admin_edit_user(target_user_id):
     new_plan = request.form.get("plan_tier", user["plan_tier"]).strip()
     new_status = request.form.get("account_status", user["account_status"]).strip()
 
-    if not new_username or not new_email:
-        flash("Username and Email are required.", "danger")
+    if (
+        not new_username
+        or not new_email
+        or len(new_username) < 3
+        or len(new_username) > 30
+        or not new_username.isalnum()
+        or len(new_email) > 254
+        or not EMAIL_RE.fullmatch(new_email)
+    ):
+        flash("Enter a valid alphanumeric username and email address.", "danger")
         return redirect(url_for("super_admin_dashboard"))
+
+    allowed_roles = {"user", "admin"}
+    allowed_plans = {"free", "pro", "enterprise"}
+    allowed_statuses = {"active", "pending", "suspended"}
+    if new_role not in allowed_roles or new_plan not in allowed_plans or new_status not in allowed_statuses:
+        flash("Invalid account settings.", "danger")
+        return redirect(url_for("super_admin_dashboard"))
+
+    # The owner account must always remain the active super admin.
+    if target_user_id == 1:
+        new_role = "admin"
+        new_plan = "pro"
+        new_status = "active"
 
     # Check unique username
     existing_u = db.execute("SELECT id FROM users WHERE LOWER(username) = ? AND id != ?", (new_username, target_user_id)).fetchone()
@@ -1623,8 +1644,16 @@ def admin_profile():
             new_username = request.form.get("username", "").strip().lower()
             new_email = request.form.get("email", "").strip().lower()
 
-            if not new_username or not new_email:
-                flash("Username and Email are required.", "danger")
+            if (
+                not new_username
+                or not new_email
+                or len(new_username) < 3
+                or len(new_username) > 30
+                or not new_username.isalnum()
+                or len(new_email) > 254
+                or not EMAIL_RE.fullmatch(new_email)
+            ):
+                flash("Enter a valid alphanumeric username and email address.", "danger")
                 return redirect(url_for("admin_profile"))
 
             # Check unique username
@@ -1699,8 +1728,35 @@ def auth_verify_email_change():
     if request.method == "POST":
         otp_input = request.form.get("otp", "").strip()
         expected_otp = session.get("email_change_otp")
+        expires_at = session.get("email_change_exp")
 
-        if otp_input != expected_otp:
+        if expires_at:
+            try:
+                exp_time = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+                if datetime.datetime.now() > exp_time:
+                    session.pop("pending_new_email", None)
+                    session.pop("email_change_otp", None)
+                    session.pop("email_change_exp", None)
+                    flash("Verification code expired. Start the email change again.", "danger")
+                    return redirect(url_for("admin_profile"))
+            except (TypeError, ValueError):
+                session.pop("pending_new_email", None)
+                session.pop("email_change_otp", None)
+                session.pop("email_change_exp", None)
+                flash("Verification session is invalid. Start the email change again.", "danger")
+                return redirect(url_for("admin_profile"))
+
+        attempts = int(session.get("email_change_attempts", 0) or 0)
+        if not expected_otp or not secrets.compare_digest(otp_input, str(expected_otp)):
+            attempts += 1
+            session["email_change_attempts"] = attempts
+            if attempts >= 5:
+                session.pop("pending_new_email", None)
+                session.pop("email_change_otp", None)
+                session.pop("email_change_exp", None)
+                session.pop("email_change_attempts", None)
+                flash("Too many invalid attempts. Start the email change again.", "danger")
+                return redirect(url_for("admin_profile"))
             flash("Invalid verification code. Please try again.", "danger")
             return render_template("auth/verify_email_change.html", pending_email=pending_new_email)
 
@@ -1713,6 +1769,7 @@ def auth_verify_email_change():
         session.pop("pending_new_email", None)
         session.pop("email_change_otp", None)
         session.pop("email_change_exp", None)
+        session.pop("email_change_attempts", None)
 
         flash(f"🎉 Email successfully updated to {pending_new_email}!", "success")
         return redirect(url_for("admin_profile"))
@@ -1750,6 +1807,10 @@ def admin_settings():
         bio = request.form.get("bio", "").strip()
         footer_text = request.form.get("footer_text", "").strip() or f"© 2026 {name}"
         email = request.form.get("email", "").strip() or None
+        if email and (len(email) > 254 or not EMAIL_RE.fullmatch(email)):
+            flash("Please enter a valid contact email address.", "danger")
+            return redirect(url_for("admin_settings"))
+
         github_url = clean_http_url(request.form.get("github_url"))
         linkedin_url = clean_http_url(request.form.get("linkedin_url"))
         twitter_url = clean_http_url(request.form.get("twitter_url"))
