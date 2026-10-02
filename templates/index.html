@@ -161,10 +161,12 @@
             <div class="skill-category-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
                 <div class="skill-category-card__header">
                     <div class="skill-category-card__icon-wrap">
-                        {% if 'Backend' in category_name or 'Programming' in category_name %}💻
-                        {% elif 'Security' in category_name or 'Systems' in category_name %}🛡️
-                        {% elif 'Tools' in category_name or 'Automation' in category_name %}⚙️
-                        {% else %}📐{% endif %}
+                        {% if 'Programming' in category_name or 'Software' in category_name %}💻
+                        {% elif 'AI' in category_name or 'Data' in category_name %}🤖
+                        {% elif 'Engineering' in category_name %}📐
+                        {% elif 'Tools' in category_name or 'Strengths' in category_name %}🛠️
+                        {% elif 'Languages' in category_name %}🌍
+                        {% else %}⚙️{% endif %}
                     </div>
                     <h3 class="skill-category-card__title">{{ category_name }}</h3>
                 </div>
