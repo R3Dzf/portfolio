@@ -1,200 +1,256 @@
 <div align="center">
 
-# 💼 Ahmed Youssef Bosha Portfolio & CMS
+# Ahmed Youssef Bosha — Portfolio Platform
 
-### A full-stack personal portfolio platform with a built-in CMS, authentication, admin dashboard, image uploads, contact messaging, and email workflows.
+A full-stack portfolio builder and content-management platform built with Flask.
 
-![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-Web%20Framework-000000?style=for-the-badge&logo=flask&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![Gunicorn](https://img.shields.io/badge/Gunicorn-Production%20Server-499848?style=for-the-badge&logo=gunicorn&logoColor=white)
+Create a personal portfolio, manage it from a dashboard, publish projects and achievements, receive contact messages, and keep live data persistent across deployments.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-ahmed--bosha.onrender.com-6C63FF?style=for-the-badge)](https://ahmed-bosha.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-Local%20Runtime-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Cloud%20Persistence-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 
 </div>
 
 ---
 
-## 📌 Overview
+## Overview
 
-This project is not just a static personal website. It is a **dynamic portfolio platform with its own content management system** built using Flask and SQLite.
+This project started as a personal portfolio and evolved into a small **multi-user portfolio platform**.
 
-The public-facing portfolio presents professional information such as education, skills, experience, services, projects, achievements, certifications, testimonials, and contact details, while the private administration area allows the content to be managed without manually editing the source code.
-
-The application also includes user authentication, email verification flows, password recovery, media uploads, contact-message management, and configurable email delivery.
-
----
-
-## ✨ Core Features
-
-### 🌐 Dynamic Portfolio Website
-The public portfolio supports structured sections for:
-
-- Hero / introduction.
-- About Me.
-- Education.
-- Technical and professional skills.
-- Work experience and training.
-- Services.
-- Featured projects.
-- Achievements and certifications.
-- Testimonials.
-- Contact information and call-to-action sections.
-
-Content is stored in the database and rendered dynamically instead of being hard-coded into a single static page.
-
-### ⚙️ Built-In Content Management System
-The administration dashboard provides dedicated management interfaces for portfolio content, including:
-
-- Profile information.
-- Education records.
-- Skills.
-- Experience.
-- Services.
-- Projects.
-- Achievements.
-- Testimonials.
-- Website settings.
-- Contact messages.
-
-This makes the portfolio maintainable from the browser without editing HTML or Python code every time content changes.
-
-### 🔐 Authentication System
-The application includes a complete authentication workflow with:
-
-- Optional user registration (disabled by default unless `ALLOW_REGISTRATION=1`).
-- Secure password hashing with Werkzeug.
-- Login sessions.
-- Email verification using OTP codes.
-- Password-reset workflow.
-- Email-change verification.
-- Protected administration routes.
-
-### 📧 Email Integration
-Email workflows can use multiple providers depending on deployment configuration:
-
-- **Brevo API**.
-- **Resend API**.
-- **Gmail SMTP** fallback.
-
-These integrations support workflows such as:
-
-- OTP verification emails.
-- Password-reset emails.
-- Account-related notifications.
-- Contact-form communication.
-
-### 🖼️ Media Uploads
-The CMS supports image uploads for portfolio content.
-
-Uploaded files are:
-
-- Restricted to approved image formats.
-- Renamed using generated unique identifiers.
-- Stored under the application's static upload directory.
-- Limited in size for safer uploads.
-
-Supported formats include:
+The homepage presents a complete public portfolio, while authenticated users can manage their own content from a browser-based dashboard. New users can create an account, verify their email, customize their profile, and publish a portfolio at:
 
 ```text
-PNG, JPG, JPEG, GIF, WEBP
+/u/<username>
 ```
 
-### 💬 Contact System
-Visitors can submit messages directly through the portfolio.
-
-Messages can then be handled through the administration dashboard, while email integration can be used to forward or notify the portfolio owner.
-
-### 🗄️ Durable SQLite Persistence
-The application still uses SQLite locally for simple, fast queries, but production deployments can use Supabase Storage as the durable source of truth. On startup, the latest database snapshot is restored from Supabase. After every committed database change, a fresh snapshot is uploaded automatically.
-
-Uploaded profile, project, and certificate images are also copied to Supabase Storage and restored on demand. This keeps live data independent from GitHub and prevents normal redeploys from resetting the portfolio.
+The main public page currently showcases **Ahmed Youssef Bosha's** portfolio, while the same application infrastructure supports additional user portfolios.
 
 ---
 
-## 🧠 Architecture
+## What the Platform Includes
+
+### Public Portfolio
+
+Each portfolio can present:
+
+- Profile photo and personal introduction
+- Education
+- Skills and technologies
+- Experience and training
+- Services
+- Featured projects
+- Achievements and certifications
+- Testimonials
+- Contact information
+- Social links and CV/resume link
+
+The frontend is responsive and supports dark/light appearance.
+
+### Portfolio CMS
+
+Users can update portfolio content without editing source code.
+
+The dashboard includes management pages for:
+
+- Profile and account information
+- Portfolio settings
+- Education
+- Skills
+- Experience
+- Services
+- Projects
+- Achievements
+- Testimonials
+- Contact messages
+
+### User Accounts
+
+The platform supports:
+
+- Account registration
+- Email verification with a 6-digit OTP
+- Secure login sessions
+- Password reset
+- Email-change verification
+- Account status controls
+- Separate portfolio URLs for users
+- Owner-only super-admin controls
+
+Registration is enabled by default and can be disabled with:
+
+```env
+ALLOW_REGISTRATION=0
+```
+
+### Profile Photo Cropper
+
+Profile images include a browser-based crop editor with:
+
+- 1:1 crop area
+- Circular profile preview guide
+- Movable crop box
+- Resize handles
+- Grid and center guides
+- 800 × 800 output
+- Direct upload from the crop dialog
+
+### Contact & Email Workflows
+
+Visitors can send messages from the portfolio contact form.
+
+The application can use:
+
+1. Brevo API
+2. Resend API
+3. Gmail / SMTP fallback
+
+Email workflows are used for:
+
+- OTP verification
+- Password reset
+- Email-change verification
+- Contact notifications
+- Admin email testing
+
+---
+
+## Persistent Data Across Deployments
+
+Render's filesystem can be ephemeral, so the application does not rely on GitHub for live user data.
+
+The runtime model is:
 
 ```text
-                    Visitor
-                       │
-                       ▼
-               Public Portfolio
-                       │
-                 Flask Routes
-                       │
-          ┌────────────┴────────────┐
-          │                         │
-          ▼                         ▼
-      SQLite DB                Email Services
-          │              Brevo / Resend / SMTP
+                 Render Web Service
+                        │
+                        ▼
+                 Local SQLite DB
+                        │
+              commit / restore
+                        │
+                        ▼
+                Supabase Postgres
+             ┌──────────┴──────────┐
+             ▼                     ▼
+ portfolio_snapshots         portfolio_media
+ SQLite DB snapshot          uploaded images
+```
+
+### How it works
+
+- SQLite is still used locally by Flask for simple and fast application queries.
+- On startup, the latest database snapshot is restored from Supabase.
+- After committed database changes, the SQLite database is synchronized back to Supabase.
+- Uploaded images are mirrored to a protected Supabase table.
+- If a local uploaded image disappears after a redeploy, Flask can load it again from Supabase.
+
+This keeps live portfolio content independent from the Git repository.
+
+> This architecture is intentionally simple for a small deployment. For a larger multi-instance production system, moving the application directly to PostgreSQL would be the next step.
+
+---
+
+## Tech Stack
+
+| Technology | Role |
+| --- | --- |
+| Python | Backend application logic |
+| Flask | Routing, views, sessions and server-side application |
+| SQLite | Local runtime database |
+| Supabase Postgres | Durable database snapshots and media persistence |
+| Jinja2 | Server-rendered HTML templates |
+| HTML / CSS / JavaScript | Frontend and interactive UI |
+| Werkzeug | Password hashing and Flask utilities |
+| Gunicorn | Production WSGI server |
+| Brevo / Resend / SMTP | Transactional email delivery |
+| Render | Current web deployment |
+
+---
+
+## Main Application Flow
+
+```text
+Visitor
+  │
+  ├── View portfolio
+  ├── View projects
+  ├── Send contact message
+  ├── Sign in
+  └── Create Portfolio
           │
           ▼
-      Admin CMS
+      Registration
           │
- ┌────────┼─────────┬──────────┐
- ▼        ▼         ▼          ▼
-Projects Skills  Education  Experience ...
+          ▼
+    Email OTP Verification
+          │
+          ▼
+       Dashboard
+          │
+    ┌─────┼────────────────────────────┐
+    ▼     ▼        ▼        ▼          ▼
+ Profile Skills Projects Education  Settings
+          │
+          ▼
+      Public Portfolio
+       /u/username
 ```
 
 ---
 
-## 🛠️ Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| **Python** | Backend application logic |
-| **Flask** | Web framework and routing |
-| **SQLite** | Persistent application database |
-| **Werkzeug** | Password hashing, security helpers, and file handling |
-| **Jinja2** | Dynamic HTML templating through Flask |
-| **HTML / CSS / JavaScript** | Frontend interface and interaction |
-| **Gunicorn** | Production WSGI server |
-| **Brevo / Resend / SMTP** | Transactional email workflows |
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```text
 portfolio/
+├── app.py
+├── Procfile
+├── requirements.txt
+├── README.md
 │
-├── app.py                  # Main Flask application and backend logic
-├── portfolio.db            # Generated SQLite database (ignored by Git)
-├── requirements.txt        # Python dependencies
-├── Procfile                # Production process configuration
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── images/
+│   │   └── default_avatar.png
+│   ├── js/
+│   │   └── profile-cropper.js
+│   └── uploads/
 │
-├── templates/
-│   ├── index.html          # Public portfolio page
-│   ├── base.html           # Shared template layout
-│   │
-│   ├── admin/              # CMS and admin dashboard templates
-│   │   ├── dashboard.html
-│   │   ├── profile.html
-│   │   ├── education.html
-│   │   ├── skills.html
-│   │   ├── experience.html
-│   │   ├── services.html
-│   │   ├── project_form.html
-│   │   ├── achievements.html
-│   │   ├── testimonials.html
-│   │   ├── messages.html
-│   │   └── settings.html
-│   │
-│   ├── auth/               # Authentication templates
-│   │   ├── register.html
-│   │   ├── verify_otp.html
-│   │   ├── forgot_password.html
-│   │   ├── reset_password.html
-│   │   └── verify_email_change.html
-│   │
-│   ├── errors/             # Custom error pages
-│   └── themes/             # Theme-related templates
-│
-└── static/
-    └── uploads/             # Uploaded portfolio media
+└── templates/
+    ├── base.html
+    ├── index.html
+    │
+    ├── admin/
+    │   ├── dashboard.html
+    │   ├── profile.html
+    │   ├── settings.html
+    │   ├── education.html
+    │   ├── skills.html
+    │   ├── experience.html
+    │   ├── services.html
+    │   ├── project_form.html
+    │   ├── achievements.html
+    │   ├── testimonials.html
+    │   ├── messages.html
+    │   └── super_dashboard.html
+    │
+    ├── auth/
+    │   ├── register.html
+    │   ├── verify_otp.html
+    │   ├── forgot_password.html
+    │   ├── reset_password.html
+    │   └── verify_email_change.html
+    │
+    └── errors/
+        └── suspended.html
 ```
 
 ---
 
-## 🚀 Getting Started
+## Run Locally
 
 ### 1. Clone the repository
 
@@ -206,21 +262,19 @@ cd portfolio
 ### 2. Create a virtual environment
 
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
-Activate it:
-
-#### Windows
+Windows:
 
 ```bash
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
-#### Linux / macOS
+Linux / macOS:
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 ### 3. Install dependencies
@@ -231,56 +285,25 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Set a secure Flask secret key and explicit administrator credentials before deployment. The application no longer creates a default administrator password.
-
-Example:
+A minimal owner configuration:
 
 ```env
-SECRET_KEY=replace-with-a-secure-random-value
+SECRET_KEY=replace-with-a-long-random-secret
+
 ADMIN_USER=admin
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASS=replace-with-a-strong-password
-ALLOW_REGISTRATION=0
+
+ALLOW_REGISTRATION=1
 ```
 
-For durable persistence on an ephemeral host such as Render Free, configure the Supabase Storage integration:
-
-```env
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-project-anon-or-publishable-key
-SUPABASE_APP_KEY=your-private-portfolio-sync-key
-SUPABASE_BUCKET=portfolio-files
-```
-
-The Supabase bucket is private and protected by Row Level Security plus an application-specific server key. Keep `SUPABASE_APP_KEY` in the hosting provider's environment variables and never commit it to Git.
-
-Optional local/persistent-disk overrides remain available:
-
-```env
-DATABASE_PATH=/var/data/portfolio.db
-UPLOAD_FOLDER=/var/data/uploads
-```
-
-Optional email configuration:
-
-```env
-MAIL_USERNAME=your-email@example.com
-MAIL_PASSWORD=your-app-password
-MAIL_RECIPIENT=your-email@example.com
-
-RESEND_API_KEY=your-resend-api-key
-BREVO_API_KEY=your-brevo-api-key
-```
-
-> Do not commit real passwords or API keys to the repository.
-
-### 5. Run locally
+Then run:
 
 ```bash
 python app.py
 ```
 
-For a production-style deployment using Gunicorn:
+For a production-style process:
 
 ```bash
 gunicorn app:app
@@ -288,80 +311,137 @@ gunicorn app:app
 
 ---
 
-## 🔐 Security Features
+## Environment Variables
 
-The project includes several practical security measures:
+### Application & Admin
 
-- Password hashing instead of plain-text passwords.
-- Session-based authentication.
-- Protected administrative routes.
-- Restricted upload extensions.
-- Maximum upload-size limit.
-- Secure generated filenames for uploaded media.
-- Environment-variable configuration for credentials and API keys.
-- Private Supabase Storage persistence with RLS-protected access.
-- Automatic database snapshot restore/sync across redeploys.
-- OTP-based verification workflows.
-- CSRF protection on state-changing forms.
-- SameSite / HttpOnly session-cookie hardening.
-- Secure password-reset tokens.
-- Basic cooldown protection for contact and OTP resend workflows.
-- URL, theme, and color-value validation for CMS settings.
+| Variable | Description |
+| --- | --- |
+| `SECRET_KEY` | Flask session-signing secret |
+| `ADMIN_USER` | Initial owner/admin username |
+| `ADMIN_EMAIL` | Initial owner/admin email |
+| `ADMIN_PASS` | Owner/admin password |
+| `ALLOW_REGISTRATION` | `1` enables public registration, `0` disables it |
+| `SESSION_COOKIE_SECURE` | Force secure session cookies when set to `1` |
+| `DATABASE_PATH` | Optional custom SQLite path |
+| `UPLOAD_FOLDER` | Optional custom local upload path |
 
-For any real production deployment, administrator passwords and the Flask secret key should always be changed from development defaults.
+### Supabase Persistence
 
----
-
-## 📧 Email Delivery Strategy
-
-The application can attempt email delivery through multiple channels:
-
-```text
-Brevo API
-    ↓ fallback
-Resend API
-    ↓ fallback
-Gmail SMTP
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-publishable-key
+SUPABASE_APP_KEY=your-private-application-sync-key
 ```
 
-This provides flexibility across different hosting environments where SMTP access or a specific email provider may not always be available.
+| Variable | Description |
+| --- | --- |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase publishable/anon API key |
+| `SUPABASE_APP_KEY` | Private application key checked by RLS policies |
+
+> Keep `SUPABASE_APP_KEY`, admin credentials, email credentials, and `SECRET_KEY` in your hosting provider's secret environment variables. Do not commit them to Git.
+
+### Email Providers
+
+Brevo:
+
+```env
+BREVO_API_KEY=your-brevo-api-key
+```
+
+Resend:
+
+```env
+RESEND_API_KEY=your-resend-api-key
+```
+
+SMTP fallback:
+
+```env
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@example.com
+MAIL_PASSWORD=your-app-password
+MAIL_RECIPIENT=your-email@example.com
+```
 
 ---
 
-## 💡 Engineering Highlights
+## Security Measures
 
-This project demonstrates practical experience with:
+The application currently includes:
 
-- Full-stack Flask development.
-- Relational database integration.
-- Authentication and session management.
-- Secure password handling.
-- OTP verification systems.
-- CRUD-based content management.
-- Dynamic Jinja templates.
-- File upload handling.
-- Transactional email integrations.
-- Admin dashboard development.
-- Contact-form processing.
-- Production deployment using Gunicorn.
-- Environment-based application configuration.
+- Werkzeug password hashing
+- CSRF protection for state-changing requests
+- HttpOnly and SameSite session cookies
+- Secure cookie support in HTTPS deployments
+- Protected dashboard routes
+- Owner-restricted super-admin routes
+- OTP expiry and resend cooldowns
+- OTP attempt throttling
+- Secure password-reset tokens
+- Email-change verification
+- Upload type and size restrictions
+- Generated upload filenames
+- URL and theme value validation
+- Basic contact-form cooldown
+- Security response headers
+- Content Security Policy
+- Row Level Security around Supabase persistence tables
+- No default hard-coded admin password
 
----
-
-## 🔮 Possible Future Improvements
-
-- Move from synchronized SQLite snapshots to PostgreSQL if the application grows to multiple concurrent server instances.
-- Add database migrations with Flask-Migrate / Alembic.
-- Add automated tests.
-- Add production-grade distributed rate limiting for authentication and public endpoints.
-- Add image compression and automatic WebP conversion.
-- Add analytics for portfolio visitors and project clicks.
-- Add REST API endpoints for external integrations.
-- Add Docker support and CI/CD deployment workflows.
+Security is an ongoing process; this project should still be reviewed before handling high-value or sensitive production data.
 
 ---
 
-## 👨‍💻 Author
+## Important Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Main portfolio |
+| `/u/<username>` | User portfolio |
+| `/register` | Create account |
+| `/login` | Sign in |
+| `/admin` | User dashboard |
+| `/admin/settings` | Portfolio settings |
+| `/admin/profile` | Account profile |
+| `/contact` | Contact-form endpoint |
+
+---
+
+## Current Deployment
+
+Live application:
+
+**https://ahmed-bosha.onrender.com**
+
+The deployed homepage currently acts as both:
+
+- Ahmed Youssef Bosha's public portfolio
+- An entry point for users who want to create their own portfolio
+
+---
+
+## Future Improvements
+
+Planned or logical next steps include:
+
+- Replace synchronized SQLite snapshots with direct PostgreSQL access
+- Add Alembic / Flask-Migrate database migrations
+- Add automated backend and browser tests
+- Add stronger distributed rate limiting
+- Add portfolio analytics and visitor statistics
+- Add custom domains
+- Add more maintained portfolio themes
+- Add image optimization and WebP conversion
+- Add drag-and-drop section ordering
+- Add richer onboarding for first-time users
+- Add CI/CD checks before deployment
+
+---
+
+## Author
 
 **Ahmed Youssef Bosha**  
 Computer & Control Engineering Student — Tanta University
@@ -372,6 +452,6 @@ GitHub: [@R3Dzf](https://github.com/R3Dzf)
 
 <div align="center">
 
-### ⭐ Built as a dynamic portfolio, CMS, and practical full-stack Flask project.
+Built as a real full-stack portfolio platform, not just a static personal page.
 
 </div>
