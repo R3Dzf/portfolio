@@ -1435,7 +1435,7 @@ def auth_verify_otp():
         session["role"] = user["role"]
         session["admin_logged_in"] = True
 
-        flash(f"🎉 Welcome, {safe_name}! Your portfolio is live at /u/{user['username']}", "success")
+        flash(f"🎉 Welcome, {full_name}! Your portfolio is live at /u/{user['username']}", "success")
         return redirect(url_for("admin_dashboard"))
 
     # GET request - show verify form
