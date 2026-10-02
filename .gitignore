@@ -8,3 +8,8 @@ venv/
 ENV/
 .idea/
 .vscode/
+portfolio.db
+*.db-wal
+*.db-shm
+*.db-journal
+instance/
