@@ -37,7 +37,7 @@
 
                 {% if project and project.image %}
                 <div class="photo-preview">
-                    <img src="{{ url_for('static', filename='uploads/' + project.image) }}"
+                    <img src="{{ url_for('uploaded_file', filename=project.image) }}"
                          alt="Current image" class="photo-preview__img" style="border-radius:var(--radius-sm); width:120px; height:80px;">
                     <div class="photo-preview__actions">
                         <label class="btn btn--sm btn--outline">
