@@ -60,7 +60,7 @@ This makes the portfolio maintainable from the browser without editing HTML or P
 ### 🔐 Authentication System
 The application includes a complete authentication workflow with:
 
-- User registration.
+- Optional user registration (disabled by default unless `ALLOW_REGISTRATION=1`).
 - Secure password hashing with Werkzeug.
 - Login sessions.
 - Email verification using OTP codes.
@@ -238,6 +238,7 @@ SECRET_KEY=replace-with-a-secure-random-value
 ADMIN_USER=admin
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASS=replace-with-a-strong-password
+ALLOW_REGISTRATION=0
 ```
 
 Optional email configuration:
@@ -279,6 +280,11 @@ The project includes several practical security measures:
 - Secure generated filenames for uploaded media.
 - Environment-variable configuration for credentials and API keys.
 - OTP-based verification workflows.
+- CSRF protection on state-changing forms.
+- SameSite / HttpOnly session-cookie hardening.
+- Secure password-reset tokens.
+- Basic cooldown protection for contact and OTP resend workflows.
+- URL, theme, and color-value validation for CMS settings.
 
 For any real production deployment, administrator passwords and the Flask secret key should always be changed from development defaults.
 
@@ -325,8 +331,7 @@ This project demonstrates practical experience with:
 - Move from SQLite to PostgreSQL for larger deployments.
 - Add database migrations with Flask-Migrate / Alembic.
 - Add automated tests.
-- Add CSRF protection across forms.
-- Add rate limiting for authentication and contact endpoints.
+- Add production-grade distributed rate limiting for authentication and public endpoints.
 - Add image compression and automatic WebP conversion.
 - Add analytics for portfolio visitors and project clicks.
 - Add REST API endpoints for external integrations.
