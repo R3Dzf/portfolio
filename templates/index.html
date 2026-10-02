@@ -313,7 +313,7 @@
 
                     <div class="project-card__tech-wrap">
                         {% for tech in p.tech_stack.split(',') %}
-                        <span class="project-tech-pill" onclick="filterByTech('{{ tech.strip() | lower }}')">{{ tech.strip() }}</span>
+                        <span class="project-tech-pill" onclick='filterByTech({{ tech.strip() | lower | tojson }})'>{{ tech.strip() }}</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -379,7 +379,7 @@
             <div class="achievement-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
                 {# Certificate Thumbnail / Icon #}
                 {% if ach.image %}
-                <div class="achievement-card__img-wrap" onclick="openCertModal('{{ url_for('static', filename='uploads/' + ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')" title="Click to view full certificate">
+                <div class="achievement-card__img-wrap" onclick='openCertModal({{ url_for("static", filename="uploads/" + ach.image) | tojson }}, {{ ach.title | tojson }}, {{ (ach.issuer or "") | tojson }})' title="Click to view full certificate">
                     <img src="{{ url_for('static', filename='uploads/' + ach.image) }}"
                          alt="{{ ach.title }}" class="achievement-card__img" loading="lazy">
                     <span class="achievement-card__zoom-hint">🔍 View</span>
@@ -403,7 +403,7 @@
                     <div class="achievement-card__cred-id">
                         <span class="cred-label">Credential ID:</span>
                         <code class="cred-code">{{ ach.credential_id }}</code>
-                        <button type="button" class="cred-copy-btn" onclick="copyCredId('{{ ach.credential_id }}', this)" title="Copy Credential ID">
+                        <button type="button" class="cred-copy-btn" onclick='copyCredId({{ ach.credential_id | tojson }}, this)' title="Copy Credential ID">
                             📋
                         </button>
                     </div>
@@ -585,7 +585,7 @@
         const current = document.documentElement.getAttribute('data-theme') || 'dark';
         const next = current === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('portfolio-theme', next);
+        localStorage.setItem('portfolio_theme', next);
     });
 })();
 
@@ -803,6 +803,31 @@ function filterByTech(tech) {
     if (sec) sec.scrollIntoView({ behavior: 'smooth' });
 }
 
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(ch) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[ch];
+    });
+}
+
+function safeExternalUrl(value) {
+    if (!value) return null;
+    try {
+        const parsed = new URL(value, window.location.origin);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.href;
+        }
+    } catch (e) {
+        return null;
+    }
+    return null;
+}
+
 // Modal Lightbox
 function openProjectModal(index) {
     const p = allProjectsData[index];
@@ -812,39 +837,49 @@ function openProjectModal(index) {
     const content = document.getElementById('projectModalContent');
     if (!modal || !content) return;
 
+    const title = escapeHTML(p.title);
+    const description = escapeHTML(p.description);
+    const imageUrl = safeExternalUrl(p.image);
+    const githubUrl = safeExternalUrl(p.github_link);
+    const liveDemoUrl = safeExternalUrl(p.live_demo_link);
+    const certificateUrl = safeExternalUrl(p.certificate_url);
+
     let imgHtml = '';
-    if (p.image) {
+    if (imageUrl) {
         imgHtml = `
-            <div class="project-modal__img-wrap" onclick="openFullscreenImage('${p.image}', '${p.title.replace(/'/g, "\\'")}')" title="Click to view full resolution">
-                <img src="${p.image}" alt="${p.title}" class="project-modal__img">
+            <div class="project-modal__img-wrap" data-project-image title="Click to view full resolution">
+                <img src="${escapeHTML(imageUrl)}" alt="${title}" class="project-modal__img">
             </div>
         `;
     }
 
     let tagsHtml = '';
     if (p.tech_stack) {
-        tagsHtml = p.tech_stack.split(',').map(t => `<span class="project-tech-pill">${t.trim()}</span>`).join('');
+        tagsHtml = String(p.tech_stack)
+            .split(',')
+            .map(t => `<span class="project-tech-pill">${escapeHTML(t.trim())}</span>`)
+            .join('');
     }
 
     let actionsHtml = '';
-    if (p.github_link) {
+    if (githubUrl) {
         actionsHtml += `
-            <a href="${p.github_link}" target="_blank" rel="noopener" class="btn btn--primary">
+            <a href="${escapeHTML(githubUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--primary">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
                 View Source Code
             </a>
         `;
     }
-    if (p.live_demo_link) {
+    if (liveDemoUrl) {
         actionsHtml += `
-            <a href="${p.live_demo_link}" target="_blank" rel="noopener" class="btn btn--outline">
+            <a href="${escapeHTML(liveDemoUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--outline">
                 🚀 Live Demo
             </a>
         `;
     }
-    if (p.certificate_url) {
+    if (certificateUrl) {
         actionsHtml += `
-            <a href="${p.certificate_url}" target="_blank" rel="noopener" class="btn btn--dark">
+            <a href="${escapeHTML(certificateUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--dark">
                 🏆 Verification / Cert
             </a>
         `;
@@ -855,9 +890,9 @@ function openProjectModal(index) {
         <div class="project-modal__body">
             <div class="project-modal__title-row">
                 <span style="font-size: 1.5rem;">📁</span>
-                <h2 class="project-modal__title">${p.title}</h2>
+                <h2 class="project-modal__title">${title}</h2>
             </div>
-            <p class="project-modal__desc">${p.description}</p>
+            <p class="project-modal__desc">${description}</p>
             <div class="project-card__tech-wrap" style="margin: 1.25rem 0;">
                 ${tagsHtml}
             </div>
@@ -866,6 +901,11 @@ function openProjectModal(index) {
             </div>
         </div>
     `;
+
+    const imageWrap = content.querySelector('[data-project-image]');
+    if (imageWrap && imageUrl) {
+        imageWrap.addEventListener('click', () => openFullscreenImage(imageUrl, p.title || ''));
+    }
 
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
@@ -910,6 +950,12 @@ function openCertModal(imgSrc, title, issuer) {
     const content = document.getElementById('projectModalContent');
     if (!modal || !content) return;
 
+    const safeImg = safeExternalUrl(imgSrc);
+    if (!safeImg) return;
+
+    const safeTitle = escapeHTML(title);
+    const safeIssuer = escapeHTML(issuer || '');
+
     content.innerHTML = `
         <div class="modal-window-frame">
             <div class="modal-window-bar">
@@ -921,8 +967,8 @@ function openCertModal(imgSrc, title, issuer) {
                 <span class="modal-window-url">📜 Official Certificate Verification</span>
                 <div style="width: 40px;"></div>
             </div>
-            <div class="project-modal__img-wrap" onclick="openFullscreenImage('${imgSrc}', '${title.replace(/'/g, "\\'")}')" style="cursor: zoom-in;">
-                <img src="${imgSrc}" alt="${title}" class="project-modal__img">
+            <div class="project-modal__img-wrap" data-certificate-image style="cursor: zoom-in;">
+                <img src="${escapeHTML(safeImg)}" alt="${safeTitle}" class="project-modal__img">
                 <span class="project-modal__zoom-badge">🔍 Click to Open Full Resolution</span>
             </div>
         </div>
@@ -930,13 +976,13 @@ function openCertModal(imgSrc, title, issuer) {
             <div class="project-modal__title-row">
                 <span style="font-size: 1.5rem;">📜</span>
                 <div>
-                    <h2 class="project-modal__title" style="font-size: 1.4rem;">${title}</h2>
-                    ${issuer ? `<p style="color: var(--clr-primary); font-size: 0.9rem; font-weight: 600; margin-top: 2px;">🏛️ ${issuer}</p>` : ''}
+                    <h2 class="project-modal__title" style="font-size: 1.4rem;">${safeTitle}</h2>
+                    ${safeIssuer ? `<p style="color: var(--clr-primary); font-size: 0.9rem; font-weight: 600; margin-top: 2px;">🏛️ ${safeIssuer}</p>` : ''}
                 </div>
             </div>
             <div class="project-modal__actions" style="margin-top: 1rem; padding-top: 1rem;">
-                <a href="${imgSrc}" target="_blank" download class="btn btn--primary">
-                    📥 Download High-Res
+                <a href="${escapeHTML(safeImg)}" target="_blank" rel="noopener noreferrer" download class="btn btn--primary">
+                    📥 Open High-Res
                 </a>
                 <button type="button" class="btn btn--outline" onclick="closeProjectModal()">
                     Close
@@ -944,6 +990,11 @@ function openCertModal(imgSrc, title, issuer) {
             </div>
         </div>
     `;
+
+    const imageWrap = content.querySelector('[data-certificate-image]');
+    if (imageWrap) {
+        imageWrap.addEventListener('click', () => openFullscreenImage(safeImg, title || ''));
+    }
 
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
