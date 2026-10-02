@@ -57,7 +57,7 @@ body {
         <!-- Hero Bento Box -->
         <div class="bento-box col-span-8" style="display: flex; align-items: center; gap: 2rem;">
             {% if settings and settings.profile_photo %}
-            <img src="{{ url_for('uploaded_file', filename=settings.profile_photo) }}" alt="{{ settings.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bento-accent);">
+            <img src="{{ media_url(settings.profile_photo) }}" alt="{{ settings.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bento-accent);">
             {% else %}
             <img src="{{ url_for('static', filename='images/default_avatar.png') }}" alt="{{ settings.name if settings else 'Profile' }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--bento-accent);">
             {% endif %}
@@ -86,7 +86,7 @@ body {
                 {% for p in projects %}
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--bento-border); border-radius: 16px; padding: 1.25rem;">
                     {% if p.image %}
-                    <img src="{{ url_for('uploaded_file', filename=p.image) }}" alt="{{ p.title }}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-bottom: 1rem;">
+                    <img src="{{ media_url(p.image) }}" alt="{{ p.title }}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-bottom: 1rem;">
                     {% endif %}
                     <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 0.4rem;">{{ p.title }}</h3>
                     <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.8rem;">{{ p.description }}</p>
