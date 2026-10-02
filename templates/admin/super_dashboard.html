@@ -112,9 +112,11 @@
                                 <button type="button" class="btn btn--sm btn--primary" onclick="openEditUserModal({{ u.id }}, '{{ u.username }}', '{{ u.email }}', '{{ u.role }}', '{{ u.plan_tier }}', '{{ u.account_status }}')" title="Edit User Details & Email">
                                     ✏️ Edit
                                 </button>
-                                <a href="{{ url_for('super_admin_impersonate', target_user_id=u.id) }}" class="btn btn--sm btn--outline" title="Login as this User">
-                                    🔑 Manage
-                                </a>
+                                <form method="POST" action="{{ url_for('super_admin_impersonate', target_user_id=u.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn--sm btn--outline" title="Manage this user's portfolio">
+                                        🔑 Manage
+                                    </button>
+                                </form>
                                 <a href="{% if u.id == 1 %}{{ url_for('index') }}{% else %}{{ url_for('user_portfolio', username=u.username) }}{% endif %}" target="_blank" class="btn btn--sm btn--dark" title="View Portfolio">
                                     👁️
                                 </a>
