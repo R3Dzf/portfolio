@@ -61,7 +61,7 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-ALLOWED_THEMES = {"default", "bento", "cyberpunk"}
+ALLOWED_THEMES = {"default"}
 
 
 def allowed_file(filename):
