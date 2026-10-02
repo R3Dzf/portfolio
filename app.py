@@ -119,6 +119,18 @@ def clean_http_url(value):
     return None
 
 
+def parse_int(value, default=0, minimum=None, maximum=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if minimum is not None:
+        parsed = max(minimum, parsed)
+    if maximum is not None:
+        parsed = min(maximum, parsed)
+    return parsed
+
+
 def media_url(value):
     """Return a safe URL for local uploaded media or approved remote media."""
     value = (value or "").strip()
@@ -1952,7 +1964,13 @@ def admin_settings():
         # Update user password if provided
         new_admin_pass = request.form.get("admin_password", "").strip()
         if new_admin_pass:
-            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_admin_pass), user_id))
+            if len(new_admin_pass) < 8:
+                flash("Admin password must be at least 8 characters long.", "danger")
+                return redirect(url_for("admin_settings"))
+            db.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (generate_password_hash(new_admin_pass), user_id),
+            )
 
         profile_photo = settings["profile_photo"] if settings else None
         if "profile_photo" in request.files:
@@ -2116,7 +2134,7 @@ def admin_add_skill():
     category = request.form.get("category", "Programming & Backend").strip()
     level_tag = request.form.get("level_tag", "").strip() or None
     icon = request.form.get("icon", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not name:
         flash("Skill name is required.", "danger")
@@ -2140,7 +2158,7 @@ def admin_edit_skill(skill_id):
     category = request.form.get("category", "Programming & Backend").strip()
     level_tag = request.form.get("level_tag", "").strip() or None
     icon = request.form.get("icon", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not name:
         flash("Skill name is required.", "danger")
@@ -2192,7 +2210,7 @@ def admin_add_education():
     start_year = request.form.get("start_year", "").strip()
     end_year = request.form.get("end_year", "").strip()
     grade_or_details = request.form.get("grade_or_details", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not institution or not degree or not field_of_study:
         flash("Institution, Degree, and Field of Study are required.", "danger")
@@ -2219,7 +2237,7 @@ def admin_edit_education(item_id):
     start_year = request.form.get("start_year", "").strip()
     end_year = request.form.get("end_year", "").strip()
     grade_or_details = request.form.get("grade_or_details", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not institution or not degree:
         flash("Institution and Degree are required.", "danger")
@@ -2271,7 +2289,7 @@ def admin_add_experience():
     end_date = request.form.get("end_date", "").strip() or None
     description = request.form.get("description", "").strip()
     is_current = 1 if request.form.get("is_current") == "1" else 0
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not title or not company or not description:
         flash("Role Title, Organization, and Description are required.", "danger")
@@ -2299,7 +2317,7 @@ def admin_edit_experience(item_id):
     end_date = request.form.get("end_date", "").strip() or None
     description = request.form.get("description", "").strip()
     is_current = 1 if request.form.get("is_current") == "1" else 0
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not title or not company or not description:
         flash("Role Title, Organization, and Description are required.", "danger")
@@ -2347,7 +2365,7 @@ def admin_add_service():
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     icon = request.form.get("icon", "⚙️").strip() or "⚙️"
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not title or not description:
         flash("Service Title and Description are required.", "danger")
@@ -2370,7 +2388,7 @@ def admin_edit_service(item_id):
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     icon = request.form.get("icon", "⚙️").strip() or "⚙️"
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not title or not description:
         flash("Service Title and Description are required.", "danger")
@@ -2421,7 +2439,7 @@ def admin_add_achievement():
     credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     image_filename = None
     if "image" in request.files:
@@ -2461,7 +2479,7 @@ def admin_edit_achievement(item_id):
     credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     image_filename = current["image"]
     if "image" in request.files:
@@ -2523,7 +2541,7 @@ def admin_add_testimonial():
     client_role = request.form.get("client_role", "").strip()
     quote = request.form.get("quote", "").strip()
     avatar = request.form.get("avatar", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not client_name or not quote:
         flash("Client/Mentor Name and Recommendation Quote are required.", "danger")
@@ -2547,7 +2565,7 @@ def admin_edit_testimonial(item_id):
     client_role = request.form.get("client_role", "").strip()
     quote = request.form.get("quote", "").strip()
     avatar = request.form.get("avatar", "").strip() or None
-    sort_order = int(request.form.get("sort_order", 0) or 0)
+    sort_order = parse_int(request.form.get("sort_order"), default=0, minimum=0, maximum=9999)
 
     if not client_name or not quote:
         flash("Client/Mentor Name and Recommendation Quote are required.", "danger")
