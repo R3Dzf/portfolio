@@ -58,7 +58,7 @@
                 };
                 image.onerror = function () {
                     closeModal(true);
-                    setStatus("This image could not be opened. Try a JPG, PNG, or WEBP file.", "error");
+                    setStatus("This image could not be opened. Try another JPG, PNG, or WEBP file.", "error");
                 };
                 image.src = reader.result;
             };
@@ -119,65 +119,114 @@
         function resizeFromHandle(handle, pointerX, pointerY) {
             if (!imageBounds || !interaction) return;
 
-            const minSize = Math.min(
-                90,
-                imageBounds.width,
-                imageBounds.height
-            );
+            const minSize = Math.min(90, imageBounds.width, imageBounds.height);
+            const startX = interaction.startX;
+            const startY = interaction.startY;
+            const startSize = interaction.startSize;
+            const centerX = startX + startSize / 2;
+            const centerY = startY + startSize / 2;
 
-            let anchorX;
-            let anchorY;
-            let rawSize;
-            let maxSize;
-            let newX;
-            let newY;
+            let newSize = startSize;
+            let newX = startX;
+            let newY = startY;
 
             if (handle === "nw") {
-                anchorX = interaction.startX + interaction.startSize;
-                anchorY = interaction.startY + interaction.startSize;
-                rawSize = Math.max(anchorX - pointerX, anchorY - pointerY);
-                maxSize = Math.min(
+                const anchorX = startX + startSize;
+                const anchorY = startY + startSize;
+                newSize = Math.max(anchorX - pointerX, anchorY - pointerY);
+                newSize = Math.min(
+                    newSize,
                     anchorX - imageBounds.left,
                     anchorY - imageBounds.top
                 );
-                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
-                newX = anchorX - cropSize;
-                newY = anchorY - cropSize;
+                newX = anchorX - newSize;
+                newY = anchorY - newSize;
             } else if (handle === "ne") {
-                anchorX = interaction.startX;
-                anchorY = interaction.startY + interaction.startSize;
-                rawSize = Math.max(pointerX - anchorX, anchorY - pointerY);
-                maxSize = Math.min(
+                const anchorX = startX;
+                const anchorY = startY + startSize;
+                newSize = Math.max(pointerX - anchorX, anchorY - pointerY);
+                newSize = Math.min(
+                    newSize,
                     imageBounds.right - anchorX,
                     anchorY - imageBounds.top
                 );
-                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
                 newX = anchorX;
-                newY = anchorY - cropSize;
+                newY = anchorY - newSize;
             } else if (handle === "sw") {
-                anchorX = interaction.startX + interaction.startSize;
-                anchorY = interaction.startY;
-                rawSize = Math.max(anchorX - pointerX, pointerY - anchorY);
-                maxSize = Math.min(
+                const anchorX = startX + startSize;
+                const anchorY = startY;
+                newSize = Math.max(anchorX - pointerX, pointerY - anchorY);
+                newSize = Math.min(
+                    newSize,
                     anchorX - imageBounds.left,
                     imageBounds.bottom - anchorY
                 );
-                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
-                newX = anchorX - cropSize;
+                newX = anchorX - newSize;
                 newY = anchorY;
-            } else {
-                anchorX = interaction.startX;
-                anchorY = interaction.startY;
-                rawSize = Math.max(pointerX - anchorX, pointerY - anchorY);
-                maxSize = Math.min(
+            } else if (handle === "se") {
+                const anchorX = startX;
+                const anchorY = startY;
+                newSize = Math.max(pointerX - anchorX, pointerY - anchorY);
+                newSize = Math.min(
+                    newSize,
                     imageBounds.right - anchorX,
                     imageBounds.bottom - anchorY
                 );
-                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
                 newX = anchorX;
                 newY = anchorY;
+            } else if (handle === "n") {
+                const anchorY = startY + startSize;
+                newSize = anchorY - pointerY;
+                newSize = Math.min(
+                    newSize,
+                    anchorY - imageBounds.top,
+                    2 * (centerX - imageBounds.left),
+                    2 * (imageBounds.right - centerX)
+                );
+                newX = centerX - newSize / 2;
+                newY = anchorY - newSize;
+            } else if (handle === "s") {
+                const anchorY = startY;
+                newSize = pointerY - anchorY;
+                newSize = Math.min(
+                    newSize,
+                    imageBounds.bottom - anchorY,
+                    2 * (centerX - imageBounds.left),
+                    2 * (imageBounds.right - centerX)
+                );
+                newX = centerX - newSize / 2;
+                newY = anchorY;
+            } else if (handle === "w") {
+                const anchorX = startX + startSize;
+                newSize = anchorX - pointerX;
+                newSize = Math.min(
+                    newSize,
+                    anchorX - imageBounds.left,
+                    2 * (centerY - imageBounds.top),
+                    2 * (imageBounds.bottom - centerY)
+                );
+                newX = anchorX - newSize;
+                newY = centerY - newSize / 2;
+            } else if (handle === "e") {
+                const anchorX = startX;
+                newSize = pointerX - anchorX;
+                newSize = Math.min(
+                    newSize,
+                    imageBounds.right - anchorX,
+                    2 * (centerY - imageBounds.top),
+                    2 * (imageBounds.bottom - centerY)
+                );
+                newX = anchorX;
+                newY = centerY - newSize / 2;
             }
 
+            newSize = Math.max(minSize, newSize);
+
+            // Final clamp in case the minimum size pushed the box toward an edge.
+            newX = Math.max(imageBounds.left, Math.min(imageBounds.right - newSize, newX));
+            newY = Math.max(imageBounds.top, Math.min(imageBounds.bottom - newSize, newY));
+
+            cropSize = newSize;
             cropX = newX;
             cropY = newY;
             renderCropBox();
