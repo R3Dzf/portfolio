@@ -46,7 +46,7 @@ app.config["SESSION_COOKIE_SECURE"] = (
     or os.environ.get("RENDER", "").lower() == "true"
 )
 app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=12)
-app.config["ALLOW_REGISTRATION"] = os.environ.get("ALLOW_REGISTRATION", "0") == "1"
+app.config["ALLOW_REGISTRATION"] = os.environ.get("ALLOW_REGISTRATION", "1") == "1"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
