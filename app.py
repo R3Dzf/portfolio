@@ -351,17 +351,17 @@ def init_db():
         CREATE TABLE IF NOT EXISTS site_settings (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id         INTEGER DEFAULT 1,
-            name            TEXT    DEFAULT 'Ahmed Bosha',
-            logo_text       TEXT    DEFAULT 'AhmedBosha',
-            site_title      TEXT    DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio',
+            name            TEXT    DEFAULT 'Ahmed Youssef Bosha',
+            logo_text       TEXT    DEFAULT 'Ahmed Bosha',
+            site_title      TEXT    DEFAULT 'Ahmed Youssef Bosha — Computer & Control Engineering Portfolio',
             greeting        TEXT    DEFAULT 'Hi, I''m',
-            tagline         TEXT    DEFAULT 'Engineering Student & Software Developer',
-            typing_texts    TEXT    DEFAULT 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast',
-            bio             TEXT    DEFAULT 'Class of 2029. Passionate about automation, system analysis, and reverse engineering. I build tools that turn complex workflows into clean, efficient solutions.',
-            footer_text     TEXT    DEFAULT '© 2026 Ahmed Bosha',
+            tagline         TEXT    DEFAULT 'Computer & Control Engineering Student',
+            typing_texts    TEXT    DEFAULT 'AI & Machine Learning,Computer Vision,Software Development,Control Systems & Robotics',
+            bio             TEXT    DEFAULT 'Third-year Computer & Control Engineering student at Tanta University, ranked 1st in the department and 1st overall in the Faculty of Engineering with a CGPA of 3.986/4.00. I build practical projects across AI, machine learning, computer vision, control systems, and backend software.',
+            footer_text     TEXT    DEFAULT '© 2026 Ahmed Youssef Bosha',
             profile_photo   TEXT,
-            email           TEXT    DEFAULT 'ahmedbosha2566@gmail.com',
-            github_url      TEXT    DEFAULT 'https://github.com/AhmedBosha',
+            email           TEXT    DEFAULT 'ahmedyoussefmansourbosha@gmail.com',
+            github_url      TEXT    DEFAULT 'https://github.com/R3Dzf',
             linkedin_url    TEXT,
             twitter_url     TEXT,
             resume_url      TEXT,
@@ -494,17 +494,17 @@ def init_db():
             CREATE TABLE site_settings_new (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id         INTEGER DEFAULT 1,
-                name            TEXT    DEFAULT 'Ahmed Bosha',
-                logo_text       TEXT    DEFAULT 'AhmedBosha',
-                site_title      TEXT    DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio',
+                name            TEXT    DEFAULT 'Ahmed Youssef Bosha',
+                logo_text       TEXT    DEFAULT 'Ahmed Bosha',
+                site_title      TEXT    DEFAULT 'Ahmed Youssef Bosha — Computer & Control Engineering Portfolio',
                 greeting        TEXT    DEFAULT 'Hi, I''m',
-                tagline         TEXT    DEFAULT 'Engineering Student & Software Developer',
-                typing_texts    TEXT    DEFAULT 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast',
-                bio             TEXT    DEFAULT 'Class of 2029. Passionate about automation, system analysis, and reverse engineering. I build tools that turn complex workflows into clean, efficient solutions.',
-                footer_text     TEXT    DEFAULT '© 2026 Ahmed Bosha',
+                tagline         TEXT    DEFAULT 'Computer & Control Engineering Student',
+                typing_texts    TEXT    DEFAULT 'AI & Machine Learning,Computer Vision,Software Development,Control Systems & Robotics',
+                bio             TEXT    DEFAULT 'Third-year Computer & Control Engineering student at Tanta University, ranked 1st in the department and 1st overall in the Faculty of Engineering with a CGPA of 3.986/4.00. I build practical projects across AI, machine learning, computer vision, control systems, and backend software.',
+                footer_text     TEXT    DEFAULT '© 2026 Ahmed Youssef Bosha',
                 profile_photo   TEXT,
-                email           TEXT    DEFAULT 'ahmedbosha2566@gmail.com',
-                github_url      TEXT    DEFAULT 'https://github.com/AhmedBosha',
+                email           TEXT    DEFAULT 'ahmedyoussefmansourbosha@gmail.com',
+                github_url      TEXT    DEFAULT 'https://github.com/R3Dzf',
                 linkedin_url    TEXT,
                 twitter_url     TEXT,
                 resume_url      TEXT,
@@ -554,9 +554,9 @@ def init_db():
     cursor.execute("PRAGMA table_info(site_settings)")
     existing_cols = [row[1] for row in cursor.fetchall()]
     needed_cols = [
-        ("logo_text", "TEXT DEFAULT 'AhmedBosha'"),
-        ("site_title", "TEXT DEFAULT 'Ahmed Bosha — Engineering & Software Portfolio'"),
-        ("footer_text", "TEXT DEFAULT '© 2026 Ahmed Bosha'"),
+        ("logo_text", "TEXT DEFAULT 'Ahmed Bosha'"),
+        ("site_title", "TEXT DEFAULT 'Ahmed Youssef Bosha — Computer & Control Engineering Portfolio'"),
+        ("footer_text", "TEXT DEFAULT '© 2026 Ahmed Youssef Bosha'"),
         ("admin_user", "TEXT DEFAULT 'admin'"),
         ("admin_pass_hash", "TEXT"),
         ("theme_name", "TEXT DEFAULT 'default'"),
@@ -589,80 +589,113 @@ def init_db():
 
     db.commit()
 
-    # ---- 1. Seed site_settings ----
+    # ---- 1. Seed site settings ----
     if db.execute("SELECT COUNT(*) FROM site_settings").fetchone()[0] == 0:
-        db.execute("INSERT INTO site_settings (id) VALUES (1)")
+        db.execute(
+            """INSERT INTO site_settings
+               (id, user_id, name, logo_text, site_title, greeting, tagline, typing_texts,
+                bio, footer_text, profile_photo, email, github_url, theme_name)
+               VALUES (1, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'default')""",
+            (
+                "Ahmed Youssef Bosha",
+                "Ahmed Bosha",
+                "Ahmed Youssef Bosha — Computer & Control Engineering Portfolio",
+                "Hi, I'm",
+                "Computer & Control Engineering Student",
+                "AI & Machine Learning,Computer Vision,Software Development,Control Systems & Robotics",
+                (
+                    "Third-year Computer & Control Engineering student at Tanta University, "
+                    "ranked 1st in the department and 1st overall in the Faculty of Engineering "
+                    "with a CGPA of 3.986/4.00. I build practical projects across AI, machine "
+                    "learning, computer vision, control systems, and backend software."
+                ),
+                "© 2026 Ahmed Youssef Bosha",
+                "profile_013e2965.png",
+                "ahmedyoussefmansourbosha@gmail.com",
+                "https://github.com/R3Dzf",
+            ),
+        )
         db.commit()
 
-    # ---- 2. Seed Education ----
+    # ---- 2. Seed education ----
     if db.execute("SELECT COUNT(*) FROM education").fetchone()[0] == 0:
         db.executemany(
             "INSERT INTO education (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
                 (
-                    "Faculty of Engineering",
+                    "Tanta University — Faculty of Engineering",
                     "Bachelor of Engineering (B.Eng.)",
-                    "Computer & Systems Engineering",
+                    "Computer & Control Engineering",
                     "2024",
                     "2029 (Expected)",
-                    "Class of 2029. Focus on Systems Analysis, Low-Level Architecture & Automation Pipelines.",
+                    "CGPA: 3.986/4.00. Ranked 1st in the Computer & Control Department and 1st overall in the Faculty of Engineering.",
                     1,
                 ),
             ],
         )
         db.commit()
 
-    # ---- 3. Seed Skills ----
+    # ---- 3. Seed skills ----
     if db.execute("SELECT COUNT(*) FROM skills").fetchone()[0] == 0:
         db.executemany(
             "INSERT INTO skills (name, category, level_tag, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
             [
-                ("Python", "Programming & Backend", "Advanced", "🐍", 1),
-                ("C / C++", "Programming & Backend", "Core", "⚡", 2),
-                ("Flask", "Programming & Backend", "Framework", "🌐", 3),
-                ("SQLite / SQL", "Programming & Backend", "Database", "🗄️", 4),
-                ("REST APIs", "Programming & Backend", "Architecture", "🔌", 5),
+                ("Python", "Programming & Software", "Core", "🐍", 1),
+                ("C++", "Programming & Software", "Core", "⚡", 2),
+                ("Object-Oriented Programming", "Programming & Software", "Core", "🧱", 3),
+                ("Data Structures & Algorithms", "Programming & Software", "Core", "🌳", 4),
+                ("Flask", "Programming & Software", "Backend", "🌐", 5),
+                ("HTML / CSS / JavaScript", "Programming & Software", "Web", "💻", 6),
+                ("REST APIs", "Programming & Software", "Backend", "🔌", 7),
+                ("SQLite / SQL", "Programming & Software", "Database", "🗄️", 8),
 
-                ("Reverse Engineering", "Security & Systems", "Specialty", "🔬", 6),
-                ("Frida", "Security & Systems", "Instrumentation", "💉", 7),
-                ("Shizuku", "Security & Systems", "Android", "📱", 8),
-                ("Binary Analysis", "Security & Systems", "Security", "🔍", 9),
-                ("Linux & Shell", "Security & Systems", "Environment", "🐧", 10),
+                ("Machine Learning", "AI & Data", "Focus", "🤖", 9),
+                ("Computer Vision", "AI & Data", "Focus", "👁️", 10),
+                ("TensorFlow", "AI & Data", "Framework", "🧠", 11),
+                ("OpenCV", "AI & Data", "Vision", "📷", 12),
+                ("scikit-learn", "AI & Data", "ML", "📈", 13),
+                ("Hugging Face", "AI & Data", "AI", "🤗", 14),
+                ("NumPy", "AI & Data", "Data", "🔢", 15),
+                ("Pandas", "AI & Data", "Data", "🐼", 16),
+                ("Matplotlib", "AI & Data", "Visualization", "📊", 17),
+                ("Natural Language Processing", "AI & Data", "Interest", "💬", 18),
 
-                ("Automation Scripts", "Tools & Automation", "Workflow", "⚙️", 11),
-                ("Git & GitHub", "Tools & Automation", "VCS", "📦", 12),
-                ("CSV Data Pipelines", "Tools & Automation", "Data", "📊", 13),
-                ("CLI Development", "Tools & Automation", "Tooling", "💻", 14),
+                ("Control Systems", "Engineering", "Core", "🎛️", 19),
+                ("Digital Logic", "Engineering", "Core", "🔲", 20),
+                ("Computer Architecture", "Engineering", "Core", "🧮", 21),
+                ("Embedded Systems", "Engineering", "Core", "🔧", 22),
+                ("Robotics", "Engineering", "Interest", "🦾", 23),
 
-                ("System Analysis", "Core Engineering", "Mindset", "📐", 15),
-                ("Problem Solving", "Core Engineering", "Strengths", "🧩", 16),
-                ("Data Structures", "Core Engineering", "CS Fundamentals", "🌳", 17),
+                ("Git & GitHub", "Tools & Strengths", "Workflow", "📦", 24),
+                ("Problem Solving", "Tools & Strengths", "Strength", "🧩", 25),
+                ("Teamwork", "Tools & Strengths", "Strength", "🤝", 26),
+                ("Time Management", "Tools & Strengths", "Strength", "⏱️", 27),
             ],
         )
         db.commit()
 
-    # ---- 4. Seed Experiences ----
+    # ---- 4. Seed experience and training ----
     if db.execute("SELECT COUNT(*) FROM experiences").fetchone()[0] == 0:
         db.executemany(
             "INSERT INTO experiences (title, company, location, start_date, end_date, description, is_current, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
-                    "Mobile Security & Reverse Engineering Researcher",
-                    "Independent Research",
-                    "Remote",
-                    "2024",
+                    "Engineering & Software Project Developer",
+                    "Academic and Independent Projects",
+                    "Tanta, Egypt / Remote",
+                    "2025",
                     "Present",
-                    "Engineered automation tools for Android binary library inspection, utilizing Frida and Shizuku instrumentation to extract dynamic memory structures (GNames, GWorld) and streamline reverse engineering workflows.",
+                    "Builds practical projects across AI, computer vision, control systems, backend web development, data processing, and engineering software. Led the Sign Language Translator team and handled core development and the final presentation.",
                     1,
                     1,
                 ),
                 (
-                    "Software Systems & Automation Engineering Trainee",
-                    "National Telecommunication Institute (NTI)",
+                    "Programming Using Python Trainee",
+                    "NTI & ITIDA",
                     "Egypt",
-                    "2025",
-                    "2025",
-                    "Completed intensive practical training in modern software architecture, backend system design, database integration, and building automated data manipulation pipelines.",
+                    "Aug 2026",
+                    "Aug 2026",
+                    "Completed a 120-hour Python programming program with a final score of 99.5%, covering practical programming, problem solving, and software-development fundamentals.",
                     0,
                     2,
                 ),
@@ -670,40 +703,40 @@ def init_db():
         )
         db.commit()
 
-    # ---- 5. Seed Services ----
+    # ---- 5. Seed capabilities / services ----
     if db.execute("SELECT COUNT(*) FROM services").fetchone()[0] == 0:
         db.executemany(
             "INSERT INTO services (title, description, icon, sort_order) VALUES (?, ?, ?, ?)",
             [
                 (
-                    "Workflow Automation & Pipelines",
-                    "Developing bespoke automation scripts, scheduled tasks, and structured CSV/database data pipelines that eliminate repetitive manual workflows.",
-                    "⚙️",
+                    "AI & Computer Vision Prototyping",
+                    "Building practical ML and computer-vision prototypes with Python, OpenCV, MediaPipe, scikit-learn, and TensorFlow.",
+                    "🤖",
                     1,
                 ),
                 (
-                    "Reverse Engineering & Binary Analysis",
-                    "Security research, static/dynamic inspection of compiled native binaries, memory offset extraction, and instrumentation using Frida & Shizuku.",
-                    "🔬",
+                    "Python & Backend Development",
+                    "Developing Flask and FastAPI applications, REST endpoints, SQLite-backed systems, and maintainable Python tooling.",
+                    "🌐",
                     2,
                 ),
                 (
-                    "Backend APIs & Custom Web Tooling",
-                    "Designing fast, lightweight, and maintainable Python/Flask backend applications, RESTful endpoints, and custom administrative CMS dashboards.",
-                    "🌐",
+                    "Engineering Software & Automation",
+                    "Creating software tools for engineering workflows, mathematical analysis, control-system problems, and repetitive technical tasks.",
+                    "⚙️",
                     3,
                 ),
                 (
-                    "CLI Tool Development",
-                    "Creating robust, ergonomic command-line applications and developer tools with structured data manipulation and high-speed execution.",
-                    "💻",
+                    "Data Analysis & Visualization",
+                    "Processing structured datasets with NumPy and Pandas and turning results into clear statistics and Matplotlib visualizations.",
+                    "📊",
                     4,
                 ),
             ],
         )
         db.commit()
 
-    # ---- 6. Seed Projects ----
+    # ---- 6. Seed featured projects ----
     if db.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 0:
         db.executemany(
             """INSERT INTO projects
@@ -711,68 +744,149 @@ def init_db():
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
-                    "HospitalSystem",
-                    "A CLI-based appointment management application demonstrating dynamic CSV file manipulation and structured data storage. Built to streamline patient scheduling with clean data pipelines.",
-                    "Python, CSV, CLI, Data Structures",
-                    "https://github.com/AhmedBosha/HospitalSystem",
-                    None, None, None,
+                    "Signal Flow Graph Solver",
+                    "Interactive engineering tool for building and solving signal-flow graphs using Mason's Gain Formula. Detects forward paths, feedback loops, non-touching loops, and produces symbolic step-by-step transfer-function analysis.",
+                    "FastAPI, NetworkX, SymPy, Cytoscape.js, JavaScript",
+                    "https://github.com/R3Dzf/Signal-Flow-Graph-Solver",
+                    "https://sfg-solver.onrender.com/",
+                    None,
+                    None,
                 ),
                 (
-                    "Mobile Static Analysis",
-                    "Automation scripts for reverse engineering binary libraries, utilizing instrumentation tools like Shizuku to extract memory offsets (e.g., GNames, GWorld). Designed to speed up mobile security research workflows.",
-                    "Python, Frida, Shizuku, Reverse Engineering",
-                    "https://github.com/AhmedBosha/MobileStaticAnalysis",
-                    None, None, None,
+                    "Sign Language Translator",
+                    "Real-time ASL recognition application using hand landmarks and machine learning. Includes data collection, model training, live webcam translation, prediction stabilization, and an experimental dynamic-sign pipeline.",
+                    "Python, OpenCV, MediaPipe, scikit-learn, TensorFlow",
+                    "https://github.com/R3Dzf/sign-language-translator",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "Full-Stack Portfolio & CMS",
+                    "Dynamic personal portfolio platform with its own CMS, authentication, admin dashboard, image uploads, contact messaging, OTP flows, password reset, and configurable email delivery.",
+                    "Flask, SQLite, HTML, CSS, JavaScript",
+                    "https://github.com/R3Dzf/portfolio",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "Natiga Pro",
+                    "Student-results search platform optimized for large datasets with Arabic-name search, seat-number lookup, ranking, pagination, sorting, statistics, and SQLite FTS5 full-text indexing.",
+                    "FastAPI, SQLite FTS5, Pandas, HTML, CSS, JavaScript",
+                    "https://github.com/R3Dzf/Natiga",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "Hospital Appointment System",
+                    "Python appointment-management system with OOP-based scheduling, validation, doctor-conflict detection, CSV persistence, analytics, and a Matplotlib visualization dashboard.",
+                    "Python, OOP, Pandas, NumPy, Matplotlib, CSV",
+                    "https://github.com/R3Dzf/Hospital-Appointment-System",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "8-bit CPU Design",
+                    "Academic digital-design project covering the main building blocks of an 8-bit processor, including the ALU, registers, memory interaction, and control-unit concepts.",
+                    "Digital Logic, Computer Architecture, CPU Design",
+                    None,
+                    None,
+                    None,
+                    None,
                 ),
             ],
         )
         db.commit()
 
-    # ---- 7. Seed Achievements ----
+    # ---- 7. Seed achievements and certifications ----
     if db.execute("SELECT COUNT(*) FROM achievements").fetchone()[0] == 0:
         db.executemany(
             "INSERT INTO achievements (title, issuer, date_earned, credential_url, icon, description, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
                 (
-                    "NTI Software Engineering & Foundations",
-                    "National Telecommunication Institute (NTI)",
-                    "2025",
-                    "https://nti.sci.eg",
-                    "🎓",
-                    "Awarded for comprehensive practical coursework in software engineering, backend paradigms, and modern system development.",
-                    1,
-                ),
-                (
-                    "Competitive Problem Solving Milestone",
-                    "Algorithms & Data Structures",
-                    "2024 - 2025",
+                    "1st Overall — Faculty of Engineering",
+                    "Tanta University",
+                    "Current",
                     None,
                     "🏆",
-                    "Solved over 150+ algorithmic challenges and problem-solving puzzles focusing on time/space complexity optimization.",
-                    2,
-                ),
-            ],
-        )
-        db.commit()
-
-    # ---- 8. Seed Testimonials ----
-    if db.execute("SELECT COUNT(*) FROM testimonials").fetchone()[0] == 0:
-        db.executemany(
-            "INSERT INTO testimonials (client_name, client_role, quote, avatar, sort_order) VALUES (?, ?, ?, ?, ?)",
-            [
-                (
-                    "Eng. Mohamed Tarek",
-                    "Software Systems Instructor & Mentor",
-                    "Ahmed demonstrates exceptional problem-solving depth and passion for low-level systems and automation. His ability to turn complex logic into clean code is outstanding.",
-                    None,
+                    "Ranked 1st overall in the Faculty of Engineering and 1st in the Computer & Control Engineering Department, with a CGPA of 3.986/4.00.",
                     1,
                 ),
+                (
+                    "Programming Using Python",
+                    "NTI & ITIDA",
+                    "Aug 2026",
+                    None,
+                    "🐍",
+                    "Completed 120 hours of training with a final score of 99.5%.",
+                    2,
+                ),
+                (
+                    "HCIA-AI V4.0",
+                    "Huawei",
+                    "Apr 2026",
+                    None,
+                    "🤖",
+                    "Artificial-intelligence certification covering core AI concepts and technologies.",
+                    3,
+                ),
+                (
+                    "Machine Learning Specialization",
+                    "DeepLearning.AI & Stanford Online",
+                    "2026",
+                    None,
+                    "🧠",
+                    "Machine-learning specialization covering supervised learning and core ML methods.",
+                    4,
+                ),
+                (
+                    "Cybersecurity",
+                    "Information Technology Institute (ITI)",
+                    "Feb 2026",
+                    None,
+                    "🔐",
+                    "Training in cybersecurity foundations and security concepts.",
+                    5,
+                ),
+                (
+                    "Generative AI Tools",
+                    "Microsoft — Career Skills Workshop",
+                    "Dec 2025",
+                    None,
+                    "✨",
+                    "Training focused on practical use of generative-AI tools.",
+                    6,
+                ),
+                (
+                    "System Analysis Using AI",
+                    "Ministry of Youth and Sports — Career Skills Workshop",
+                    "Dec 2025",
+                    None,
+                    "📐",
+                    "Training on applying AI tools to system analysis and structured problem solving.",
+                    7,
+                ),
             ],
         )
         db.commit()
 
+    # Testimonials are intentionally left empty; only real attributed testimonials should be published.
+
     db.close()
-    print("[OK] Database initialized with all 9 NTI components.")
+    print("[OK] Portfolio database initialized.")
+
+
+def ensure_database():
+    """Create the database on first boot, including Gunicorn deployments."""
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    if not os.path.exists(DATABASE):
+        init_db()
+
+
+ensure_database()
 
 
 # ---------------------------------------------------------------------------
@@ -2257,6 +2371,4 @@ def admin_test_email():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    init_db()
     app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))
