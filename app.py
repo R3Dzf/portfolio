@@ -17,6 +17,7 @@ import urllib.request
 import urllib.error
 import datetime
 import random
+import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -31,12 +32,12 @@ from werkzeug.utils import secure_filename
 # App configuration
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me-in-production")
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4 MB upload limit
 
 DATABASE = os.path.join(app.root_path, "portfolio.db")
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Mail configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -45,13 +46,6 @@ MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
 MAIL_RECIPIENT = os.environ.get("MAIL_RECIPIENT")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
-
-# Admin credentials
-ADMIN_USERNAME = os.environ.get("ADMIN_USER", "admin")
-ADMIN_PASSWORD_HASH = generate_password_hash(
-    os.environ.get("ADMIN_PASS", "admin123")
-)
-
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -96,7 +90,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
     # 1. Try Brevo HTTPS API (100% Free - 300 emails/day to ANY recipient in the world over HTTPS port 443!)
     if brevo_key:
         brevo_key_clean = brevo_key.strip("'\" \t\r\n")
-        print(f"[BREVO DEBUG] Key present (Length: {len(brevo_key_clean)}, Prefix: '{brevo_key_clean[:12]}...')")
+        print(f"[BREVO] API key configured (length: {len(brevo_key_clean)})")
         try:
             url = "https://api.brevo.com/v3/smtp/email"
             headers = {
@@ -579,14 +573,19 @@ def init_db():
     if "image" not in ach_cols:
         cursor.execute("ALTER TABLE achievements ADD COLUMN image TEXT")
 
-    # Seed Default Super Admin User (Ahmed Bosha)
+    # Seed the first admin only when credentials are explicitly configured.
     if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-        admin_pass = os.environ.get("ADMIN_PASS", "admin123")
-        db.execute(
-            """INSERT INTO users (id, username, email, password_hash, role, account_status, plan_tier)
-               VALUES (1, 'admin', 'admin@ahmedbosha.com', ?, 'admin', 'active', 'pro')""",
-            (generate_password_hash(admin_pass),),
-        )
+        admin_pass = os.environ.get("ADMIN_PASS")
+        if admin_pass:
+            admin_user = os.environ.get("ADMIN_USER", "admin").strip() or "admin"
+            admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").strip() or "admin@example.com"
+            db.execute(
+                """INSERT INTO users (id, username, email, password_hash, role, account_status, plan_tier)
+                   VALUES (1, ?, ?, ?, 'admin', 'active', 'pro')""",
+                (admin_user, admin_email, generate_password_hash(admin_pass)),
+            )
+        else:
+            print("[SECURITY] ADMIN_PASS is not set; no default admin account was created.")
 
     db.commit()
 
@@ -2260,4 +2259,4 @@ def admin_test_email():
 if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))
