@@ -718,29 +718,32 @@ def init_db():
                 ("Flask", "Programming & Software", "Backend", "🌐", 5),
                 ("HTML / CSS / JavaScript", "Programming & Software", "Web", "💻", 6),
                 ("REST APIs", "Programming & Software", "Backend", "🔌", 7),
-                ("SQLite / SQL", "Programming & Software", "Database", "🗄️", 8),
+                ("FastAPI", "Programming & Software", "Backend", "⚡", 8),
+                ("SQLite / SQL", "Programming & Software", "Database", "🗄️", 9),
 
-                ("Machine Learning", "AI & Data", "Focus", "🤖", 9),
-                ("Computer Vision", "AI & Data", "Focus", "👁️", 10),
-                ("TensorFlow", "AI & Data", "Framework", "🧠", 11),
-                ("OpenCV", "AI & Data", "Vision", "📷", 12),
-                ("scikit-learn", "AI & Data", "ML", "📈", 13),
-                ("Hugging Face", "AI & Data", "AI", "🤗", 14),
-                ("NumPy", "AI & Data", "Data", "🔢", 15),
-                ("Pandas", "AI & Data", "Data", "🐼", 16),
-                ("Matplotlib", "AI & Data", "Visualization", "📊", 17),
-                ("Natural Language Processing", "AI & Data", "Interest", "💬", 18),
+                ("Machine Learning", "AI & Data", "Focus", "🤖", 10),
+                ("Computer Vision", "AI & Data", "Focus", "👁️", 11),
+                ("Deep Learning", "AI & Data", "Focus", "🧠", 12),
+                ("TensorFlow", "AI & Data", "Framework", "🧠", 13),
+                ("OpenCV", "AI & Data", "Vision", "📷", 14),
+                ("MediaPipe", "AI & Data", "Vision", "✋", 15),
+                ("scikit-learn", "AI & Data", "ML", "📈", 16),
+                ("Hugging Face", "AI & Data", "AI", "🤗", 17),
+                ("NumPy", "AI & Data", "Data", "🔢", 18),
+                ("Pandas", "AI & Data", "Data", "🐼", 19),
+                ("Matplotlib", "AI & Data", "Visualization", "📊", 20),
+                ("Natural Language Processing", "AI & Data", "Interest", "💬", 21),
 
-                ("Control Systems", "Engineering", "Core", "🎛️", 19),
-                ("Digital Logic", "Engineering", "Core", "🔲", 20),
-                ("Computer Architecture", "Engineering", "Core", "🧮", 21),
-                ("Embedded Systems", "Engineering", "Core", "🔧", 22),
-                ("Robotics", "Engineering", "Interest", "🦾", 23),
+                ("Control Systems", "Engineering", "Core", "🎛️", 22),
+                ("Digital Logic", "Engineering", "Core", "🔲", 23),
+                ("Computer Architecture", "Engineering", "Core", "🧮", 24),
+                ("Embedded Systems", "Engineering", "Core", "🔧", 25),
+                ("Robotics", "Engineering", "Interest", "🦾", 26),
 
-                ("Git & GitHub", "Tools & Strengths", "Workflow", "📦", 24),
-                ("Problem Solving", "Tools & Strengths", "Strength", "🧩", 25),
-                ("Teamwork", "Tools & Strengths", "Strength", "🤝", 26),
-                ("Time Management", "Tools & Strengths", "Strength", "⏱️", 27),
+                ("Git & GitHub", "Tools & Strengths", "Workflow", "📦", 27),
+                ("Problem Solving", "Tools & Strengths", "Strength", "🧩", 28),
+                ("Teamwork", "Tools & Strengths", "Strength", "🤝", 29),
+                ("Time Management", "Tools & Strengths", "Strength", "⏱️", 30),
             ],
         )
         db.commit()
@@ -751,13 +754,13 @@ def init_db():
             "INSERT INTO experiences (title, company, location, start_date, end_date, description, is_current, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
-                    "Engineering & Software Project Developer",
-                    "Academic and Independent Projects",
-                    "Tanta, Egypt / Remote",
-                    "2025",
-                    "Present",
-                    "Builds practical projects across AI, computer vision, control systems, backend web development, data processing, and engineering software. Led the Sign Language Translator team and handled core development and the final presentation.",
-                    1,
+                    "Team Lead & Developer — Sign Language Translator",
+                    "Tanta University — Academic Project",
+                    "Tanta, Egypt",
+                    "Feb 2026",
+                    "Apr 2026",
+                    "Led the project team, coordinated task distribution, contributed to the core implementation, and delivered the final presentation. The system combines real-time computer vision, hand-landmark extraction, machine learning, and live sign prediction.",
+                    0,
                     1,
                 ),
                 (
@@ -825,7 +828,7 @@ def init_db():
                 ),
                 (
                     "Sign Language Translator",
-                    "Real-time ASL recognition application using hand landmarks and machine learning. Includes data collection, model training, live webcam translation, prediction stabilization, and an experimental dynamic-sign pipeline.",
+                    "Real-time ASL recognition application using hand landmarks and machine learning. Includes data collection, model training, live webcam translation, prediction stabilization, and an experimental dynamic-sign pipeline. The static model reached about 93.5% session-based test accuracy.",
                     "Python, OpenCV, MediaPipe, scikit-learn, TensorFlow",
                     "https://github.com/R3Dzf/sign-language-translator",
                     None,
@@ -837,6 +840,24 @@ def init_db():
                     "Dynamic personal portfolio platform with its own CMS, authentication, admin dashboard, image uploads, contact messaging, OTP flows, password reset, and configurable email delivery.",
                     "Flask, SQLite, HTML, CSS, JavaScript",
                     "https://github.com/R3Dzf/portfolio",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "GPA Calculator",
+                    "Responsive GPA calculator for managing semesters, courses, credit hours, grades, and cumulative GPA planning through a browser-based interface.",
+                    "HTML, CSS, JavaScript, Tailwind CSS",
+                    "https://github.com/R3Dzf/GPA",
+                    None,
+                    None,
+                    None,
+                ),
+                (
+                    "DC Motor Speed Control",
+                    "Electronics project for controlling DC motor speed using a MOSFET switching stage and potentiometer-based input, demonstrating practical power-electronics and control concepts.",
+                    "Electronics, MOSFET, Potentiometer, DC Motor Control",
+                    None,
                     None,
                     None,
                     None,
@@ -861,7 +882,7 @@ def init_db():
                 ),
                 (
                     "8-bit CPU Design",
-                    "Academic digital-design project covering the main building blocks of an 8-bit processor, including the ALU, registers, memory interaction, and control-unit concepts.",
+                    "Team digital-design project developed from February to July 2026, covering the ALU, registers, memory, control unit, physical integration, testing, and instruction validation of an 8-bit processor.",
                     "Digital Logic, Computer Architecture, CPU Design",
                     None,
                     None,
@@ -1040,7 +1061,7 @@ def render_user_portfolio(user_id):
     if not settings:
         settings = get_settings(user_id=1, db=db)
 
-    projects = db.execute("SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
+    projects = db.execute("SELECT * FROM projects WHERE user_id = ? ORDER BY id ASC", (user_id,)).fetchall()
     skills_raw = db.execute("SELECT * FROM skills WHERE user_id = ? ORDER BY category ASC, sort_order ASC, id ASC", (user_id,)).fetchall()
     
     skill_categories = {}
