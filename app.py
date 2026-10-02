@@ -573,19 +573,30 @@ def init_db():
     if "image" not in ach_cols:
         cursor.execute("ALTER TABLE achievements ADD COLUMN image TEXT")
 
-    # Seed the first admin only when credentials are explicitly configured.
+    # Reserve user id 1 for the portfolio owner.
     if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
         admin_pass = os.environ.get("ADMIN_PASS")
+        admin_user = os.environ.get("ADMIN_USER", "admin").strip() or "admin"
+        admin_email = os.environ.get(
+            "ADMIN_EMAIL", "ahmedyoussefmansourbosha@gmail.com"
+        ).strip() or "ahmedyoussefmansourbosha@gmail.com"
+
         if admin_pass:
-            admin_user = os.environ.get("ADMIN_USER", "admin").strip() or "admin"
-            admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").strip() or "admin@example.com"
-            db.execute(
-                """INSERT INTO users (id, username, email, password_hash, role, account_status, plan_tier)
-                   VALUES (1, ?, ?, ?, 'admin', 'active', 'pro')""",
-                (admin_user, admin_email, generate_password_hash(admin_pass)),
-            )
+            password_hash = generate_password_hash(admin_pass)
+            account_status = "active"
         else:
-            print("[SECURITY] ADMIN_PASS is not set; no default admin account was created.")
+            # Keep the owner id reserved without exposing a default password.
+            password_hash = generate_password_hash(secrets.token_urlsafe(48))
+            account_status = "suspended"
+
+        db.execute(
+            """INSERT INTO users (id, username, email, password_hash, role, account_status, plan_tier)
+               VALUES (1, ?, ?, ?, 'admin', ?, 'pro')""",
+            (admin_user, admin_email, password_hash, account_status),
+        )
+
+        if not admin_pass:
+            print("[SECURITY] ADMIN_PASS is not set; owner login is disabled until configured.")
 
     db.commit()
 
@@ -884,6 +895,27 @@ def ensure_database():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     if not os.path.exists(DATABASE):
         init_db()
+
+    # If the database was created before ADMIN_PASS was configured, activate
+    # the reserved owner account once explicit credentials become available.
+    admin_pass = os.environ.get("ADMIN_PASS")
+    if admin_pass:
+        db = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+        owner = db.execute("SELECT * FROM users WHERE id = 1").fetchone()
+        if owner and owner["role"] == "admin" and owner["account_status"] == "suspended":
+            admin_user = os.environ.get("ADMIN_USER", owner["username"] or "admin").strip() or "admin"
+            admin_email = os.environ.get(
+                "ADMIN_EMAIL", owner["email"] or "ahmedyoussefmansourbosha@gmail.com"
+            ).strip() or "ahmedyoussefmansourbosha@gmail.com"
+            db.execute(
+                """UPDATE users
+                   SET username = ?, email = ?, password_hash = ?, account_status = 'active'
+                   WHERE id = 1""",
+                (admin_user, admin_email, generate_password_hash(admin_pass)),
+            )
+            db.commit()
+        db.close()
 
 
 ensure_database()
