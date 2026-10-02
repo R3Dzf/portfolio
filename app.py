@@ -12,6 +12,7 @@ import functools
 import uuid
 import smtplib
 import threading
+import time
 import json
 import urllib.request
 import urllib.error
@@ -43,6 +44,7 @@ app.config["SESSION_COOKIE_SECURE"] = (
     or os.environ.get("RENDER", "").lower() == "true"
 )
 app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=12)
+app.config["ALLOW_REGISTRATION"] = os.environ.get("ALLOW_REGISTRATION", "0") == "1"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 DATABASE = os.path.join(app.root_path, "portfolio.db")
@@ -145,7 +147,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
     mail_pass = os.environ.get("MAIL_PASSWORD", "").strip()
 
     if not to_email:
-        to_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedbosha2566@gmail.com").strip()
+        to_email = (os.environ.get("MAIL_RECIPIENT") or mail_user or "ahmedyoussefmansourbosha@gmail.com").strip()
 
     # 1. Try Brevo HTTPS API (100% Free - 300 emails/day to ANY recipient in the world over HTTPS port 443!)
     if brevo_key:
@@ -166,7 +168,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 or "ahmedyoussefmansourbosha@gmail.com"
             ).strip("'\" \t\r\n")
             payload = {
-                "sender": {"name": "BoshaCraft", "email": sender_email_val},
+                "sender": {"name": "Ahmed Bosha Portfolio", "email": sender_email_val},
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "htmlContent": html_body,
@@ -184,7 +186,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
             err = e.read().decode("utf-8")
             print(f"[BREVO HTTP ERROR {e.code}] {err}")
             # Automatic retry with alternative sender email if Brevo rejects sender
-            alt_senders = ["ahmedyoussefmansourbosha@gmail.com", "ahmedbosha2566@gmail.com"]
+            alt_senders = ["ahmedyoussefmansourbosha@gmail.com", "ahmedyoussefmansourbosha@gmail.com"]
             for alt in alt_senders:
                 if alt != sender_email_val:
                     try:
@@ -211,7 +213,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 "User-Agent": "Portfolio-App/1.0",
             }
             payload = {
-                "from": "BoshaCraft <onboarding@resend.dev>",
+                "from": "Ahmed Bosha Portfolio <onboarding@resend.dev>",
                 "to": [to_email],
                 "subject": subject,
                 "html": html_body,
@@ -235,7 +237,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
     if mail_user and mail_pass:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"BoshaCraft <{mail_user}>"
+        msg["From"] = f"Ahmed Bosha Portfolio <{mail_user}>"
         msg["To"] = to_email
         if reply_to:
             msg["Reply-To"] = reply_to.strip()
@@ -278,7 +280,7 @@ def send_email_async(to_email, subject, html_body, reply_to=None):
 
 def send_otp_email(to_email, full_name, otp_code):
     """Send beautiful mobile-responsive OTP verification code email."""
-    subject = f"🔐 Your BoshaCraft Verification Code: {otp_code}"
+    subject = f"🔐 Your Ahmed Bosha Portfolio Verification Code: {otp_code}"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 480px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 16px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box;">
         <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 24px 16px; text-align: center;">
@@ -311,7 +313,7 @@ def send_otp_email(to_email, full_name, otp_code):
 
 def send_password_reset_email(to_email, username, reset_url):
     """Send beautiful password reset email."""
-    subject = "🔒 Reset Your BoshaCraft Password"
+    subject = "🔒 Reset Your Ahmed Bosha Portfolio Password"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
         <div style="background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%); padding: 32px 28px; text-align: center;">
@@ -1020,7 +1022,12 @@ def inject_globals():
         settings = None
         master_settings = None
         unread = 0
-    return dict(settings=settings, master_settings=master_settings, unread_count=unread)
+    return dict(
+        settings=settings,
+        master_settings=master_settings,
+        unread_count=unread,
+        allow_registration=app.config["ALLOW_REGISTRATION"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1119,6 +1126,15 @@ def contact():
     """Handle contact form submission (public, supports AJAX, per-tenant routing)."""
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
 
+    now = time.time()
+    last_contact = float(session.get("_last_contact_at", 0) or 0)
+    if now - last_contact < 30:
+        error = "Please wait a few seconds before sending another message."
+        if is_ajax:
+            return jsonify({"success": False, "error": error}), 429
+        flash(error, "warning")
+        return redirect(url_for("index") + "#contact")
+
     target_user_id = 1
     if request.is_json:
         data = request.get_json() or {}
@@ -1153,6 +1169,8 @@ def contact():
         flash(error, "danger")
         return redirect(url_for("index") + "#contact")
 
+    session["_last_contact_at"] = now
+
     db = get_db()
     db.execute(
         "INSERT INTO messages (user_id, sender_name, sender_email, message) VALUES (?, ?, ?, ?)",
@@ -1184,6 +1202,9 @@ def contact():
 
 @app.route("/register", methods=["GET", "POST"])
 def auth_register():
+    if not app.config["ALLOW_REGISTRATION"]:
+        abort(404)
+
     if session.get("user_id"):
         return redirect(url_for("admin_dashboard"))
 
@@ -1302,12 +1323,9 @@ def auth_verify_otp():
         )
         db.commit()
 
-        # Clear pending session, start real session
-        full_name = session.pop("pending_full_name", user["username"])
-        session.pop("pending_email", None)
-        session.pop("pending_user_id", None)
-        session.pop("pending_username", None)
-
+        # Clear pending session and start a fresh authenticated session.
+        full_name = session.get("pending_full_name", user["username"])
+        session.clear()
         session["user_id"] = user["id"]
         session["username"] = user["username"]
         session["role"] = user["role"]
@@ -1325,6 +1343,12 @@ def auth_verify_otp():
 
 @app.route("/resend-otp", methods=["POST"])
 def auth_resend_otp():
+    last_resend = float(session.get("_last_otp_resend_at", 0) or 0)
+    now = time.time()
+    if now - last_resend < 60:
+        flash("Please wait before requesting another verification code.", "warning")
+        return redirect(url_for("auth_verify_otp"))
+
     pending_user_id = session.get("pending_user_id")
     if not pending_user_id:
         flash("Session expired. Please register again.", "warning")
@@ -1346,6 +1370,7 @@ def auth_resend_otp():
 
     full_name = session.get("pending_full_name", user["username"])
     send_otp_email(user["email"], full_name, otp_code)
+    session["_last_otp_resend_at"] = now
 
     parts = user["email"].split("@")
     masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
@@ -1386,6 +1411,7 @@ def admin_login():
                 flash("Please verify your email first.", "warning")
                 return render_template("auth/verify_otp.html", masked_email=masked)
 
+            session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["role"] = user["role"]
