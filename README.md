@@ -95,7 +95,7 @@ Uploaded files are:
 Supported formats include:
 
 ```text
-PNG, JPG, JPEG, GIF, WEBP, SVG
+PNG, JPG, JPEG, GIF, WEBP
 ```
 
 ### 💬 Contact System
@@ -229,13 +229,14 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-At minimum, set a secure Flask secret key and administrator credentials for deployment.
+Set a secure Flask secret key and explicit administrator credentials before deployment. The application no longer creates a default administrator password.
 
 Example:
 
 ```env
 SECRET_KEY=replace-with-a-secure-random-value
 ADMIN_USER=admin
+ADMIN_EMAIL=admin@example.com
 ADMIN_PASS=replace-with-a-strong-password
 ```
 
