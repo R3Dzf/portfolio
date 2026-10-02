@@ -1106,7 +1106,7 @@ def render_user_portfolio(user_id):
     testimonials_list = db.execute("SELECT * FROM testimonials WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
 
     theme = "default"
-    if settings and "theme_name" in settings.keys() and settings["theme_name"]:
+    if settings and "theme_name" in settings.keys() and settings["theme_name"] in ALLOWED_THEMES:
         theme = settings["theme_name"]
 
     theme_template = f"themes/{theme}/index.html"
