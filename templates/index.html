@@ -6,7 +6,7 @@
 <nav class="navbar">
     <div class="container navbar__inner">
         <a href="#about" class="navbar__logo" aria-label="Back to top">
-            {% set brand_name = settings.name if settings and settings.name else 'Ahmed Bosha' %}
+            {% set brand_name = settings.logo_text if settings and settings.logo_text else (settings.name if settings and settings.name else 'Ahmed Bosha') %}
             {% set brand_parts = brand_name.split() %}
             {% if brand_parts | length > 1 %}
                 <span>{{ brand_parts[0] }}</span><span class="accent">{{ brand_parts[1:] | join(' ') }}</span>
@@ -416,7 +416,7 @@
                         </a>
                         {% endif %}
                         {% if ach.image %}
-                        <button type="button" class="btn btn--sm btn--outline" onclick="openCertModal('{{ media_url(ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')">
+                        <button type="button" class="btn btn--sm btn--outline" onclick='openCertModal({{ media_url(ach.image) | tojson }}, {{ ach.title | tojson }}, {{ (ach.issuer or "") | tojson }})'>
                             📜 View Certificate
                         </button>
                         {% endif %}
@@ -539,7 +539,7 @@
 <!-- ===== Footer ===== -->
 <footer class="footer">
     <div class="container footer__inner">
-        <p>{{ master_settings.footer_text if master_settings and master_settings.footer_text else '© 2026 Ahmed Youssef Bosha' }}</p>
+        <p>{{ settings.footer_text if settings and settings.footer_text else '© 2026 Ahmed Youssef Bosha' }}</p>
         {% if session.get('user_id') %}
         <p class="footer__credit">
             <a href="{{ url_for('admin_dashboard') }}" class="footer__admin-link">Dashboard</a>
