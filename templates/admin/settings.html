@@ -66,30 +66,73 @@
                 <!-- Profile Photo -->
                 <div class="form-group">
                     <label class="form-label">Profile Photo</label>
-                    {% if settings and settings.profile_photo %}
                     <div class="photo-preview">
+                        {% if settings and settings.profile_photo %}
                         <img src="{{ media_url(settings.profile_photo) }}"
-                             alt="Current profile photo" class="photo-preview__img">
+                             alt="Current profile photo" class="photo-preview__img" id="profilePhotoPreview">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='images/default_avatar.png') }}"
+                             alt="Default avatar" class="photo-preview__img" id="profilePhotoPreview"
+                             style="border-color: var(--clr-border);">
+                        {% endif %}
+
                         <div class="photo-preview__actions">
-                            <label class="btn btn--sm btn--outline" for="profile_photo">Change Photo</label>
+                            <label class="btn btn--sm {% if settings and settings.profile_photo %}btn--outline{% else %}btn--primary{% endif %}"
+                                   for="profile_photo">
+                                {% if settings and settings.profile_photo %}Change Photo{% else %}Upload Custom Photo{% endif %}
+                            </label>
+
+                            {% if settings and settings.profile_photo %}
                             <label class="btn btn--sm btn--danger">
                                 <input type="checkbox" name="remove_photo" value="1" style="display:none;"
                                        onchange="this.form.submit()">
                                 Remove Photo
                             </label>
+                            {% endif %}
+                        </div>
+
+                        <p class="form-hint photo-preview__name">
+                            Choose a photo, position it inside the circle, then save the crop.
+                        </p>
+                    </div>
+
+                    <input type="file" id="profile_photo" name="profile_photo"
+                           accept="image/png,image/jpeg,image/webp" style="display:none;">
+                </div>
+
+                <!-- Circular Profile Cropper -->
+                <div class="profile-crop-modal" id="profileCropModal" aria-hidden="true">
+                    <div class="profile-crop-modal__backdrop" data-crop-close></div>
+                    <div class="profile-crop-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="profileCropTitle">
+                        <div class="profile-crop-modal__header">
+                            <div>
+                                <h3 id="profileCropTitle">Crop Profile Photo</h3>
+                                <p>Drag the photo and use zoom until your face fits the circle.</p>
+                            </div>
+                            <button type="button" class="profile-crop-modal__close" data-crop-close aria-label="Close">&times;</button>
+                        </div>
+
+                        <div class="profile-crop-modal__body">
+                            <div class="profile-crop-stage" id="profileCropStage">
+                                <img id="profileCropImage" alt="Profile crop preview" draggable="false">
+                                <div class="profile-crop-stage__mask" aria-hidden="true"></div>
+                                <div class="profile-crop-stage__guide" aria-hidden="true"></div>
+                            </div>
+
+                            <div class="profile-crop-controls">
+                                <label for="profileCropZoom">Zoom</label>
+                                <input type="range" id="profileCropZoom" min="1" max="3" step="0.01" value="1">
+                                <button type="button" class="btn btn--sm btn--outline" id="profileCropReset">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="profile-crop-modal__footer">
+                            <button type="button" class="btn btn--outline" data-crop-close>Cancel</button>
+                            <button type="button" class="btn btn--primary" id="profileCropSave">
+                                Save Photo
+                            </button>
                         </div>
                     </div>
-                    <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
-                    {% else %}
-                    <div class="photo-preview" style="background: rgba(255,255,255,0.02);">
-                        <img src="{{ url_for('static', filename='images/default_avatar.png') }}"
-                             alt="Default avatar" class="photo-preview__img" style="border-color: var(--clr-border);">
-                        <div class="photo-preview__actions">
-                            <label class="btn btn--sm btn--primary" for="profile_photo">Upload Custom Photo</label>
-                        </div>
-                    </div>
-                    <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display:none;" onchange="this.form.submit()">
-                    {% endif %}
                 </div>
 
                 {% if session.get('role') == 'admin' %}
@@ -290,5 +333,223 @@ function applyPreset(primary, accent, bg, surface, text) {
         document.getElementById('color_text_swatch').value = text;
     }
 }
+
+/* Profile photo circular cropper — dependency-free and mobile friendly. */
+(function () {
+    const input = document.getElementById('profile_photo');
+    const modal = document.getElementById('profileCropModal');
+    const stage = document.getElementById('profileCropStage');
+    const image = document.getElementById('profileCropImage');
+    const zoomInput = document.getElementById('profileCropZoom');
+    const resetBtn = document.getElementById('profileCropReset');
+    const saveBtn = document.getElementById('profileCropSave');
+    const closeButtons = modal ? modal.querySelectorAll('[data-crop-close]') : [];
+
+    if (!input || !modal || !stage || !image || !zoomInput || !saveBtn) return;
+
+    let objectUrl = null;
+    let minScale = 1;
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function stageSize() {
+        return Math.max(1, stage.getBoundingClientRect().width);
+    }
+
+    function clampOffsets() {
+        const size = stageSize();
+        const scaledWidth = image.naturalWidth * scale;
+        const scaledHeight = image.naturalHeight * scale;
+        const limitX = Math.max(0, (scaledWidth - size) / 2);
+        const limitY = Math.max(0, (scaledHeight - size) / 2);
+        offsetX = Math.min(limitX, Math.max(-limitX, offsetX));
+        offsetY = Math.min(limitY, Math.max(-limitY, offsetY));
+    }
+
+    function renderCrop() {
+        clampOffsets();
+        image.style.transform =
+            'translate(-50%, -50%) translate(' + offsetX + 'px, ' + offsetY + 'px) scale(' + scale + ')';
+    }
+
+    function resetCrop() {
+        if (!image.naturalWidth || !image.naturalHeight) return;
+        const size = stageSize();
+        minScale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+        scale = minScale;
+        offsetX = 0;
+        offsetY = 0;
+        zoomInput.value = '1';
+        renderCrop();
+    }
+
+    function openModal(file) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(file);
+        image.onload = function () {
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(resetCrop);
+        };
+        image.src = objectUrl;
+    }
+
+    function closeModal(clearSelection) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        dragging = false;
+
+        if (clearSelection) input.value = '';
+
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+        }
+    }
+
+    input.addEventListener('change', function () {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+            alert('Please choose a JPG, PNG, or WEBP image.');
+            input.value = '';
+            return;
+        }
+
+        openModal(file);
+    });
+
+    zoomInput.addEventListener('input', function () {
+        const previousScale = scale;
+        scale = minScale * Number(zoomInput.value || 1);
+
+        if (previousScale > 0) {
+            const ratio = scale / previousScale;
+            offsetX *= ratio;
+            offsetY *= ratio;
+        }
+        renderCrop();
+    });
+
+    resetBtn.addEventListener('click', resetCrop);
+
+    stage.addEventListener('pointerdown', function (event) {
+        if (!image.src) return;
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        stage.setPointerCapture(event.pointerId);
+        stage.classList.add('is-dragging');
+    });
+
+    stage.addEventListener('pointermove', function (event) {
+        if (!dragging) return;
+        offsetX += event.clientX - lastX;
+        offsetY += event.clientY - lastY;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        renderCrop();
+    });
+
+    function endDrag(event) {
+        dragging = false;
+        stage.classList.remove('is-dragging');
+        try { stage.releasePointerCapture(event.pointerId); } catch (e) {}
+    }
+
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', endDrag);
+
+    closeButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            closeModal(true);
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && modal.classList.contains('open')) {
+            closeModal(true);
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        if (modal.classList.contains('open')) resetCrop();
+    });
+
+    saveBtn.addEventListener('click', function () {
+        if (!image.naturalWidth || !image.naturalHeight) return;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        const size = stageSize();
+        clampOffsets();
+
+        const displayedWidth = image.naturalWidth * scale;
+        const displayedHeight = image.naturalHeight * scale;
+        const left = size / 2 + offsetX - displayedWidth / 2;
+        const top = size / 2 + offsetY - displayedHeight / 2;
+
+        let sourceX = (0 - left) / scale;
+        let sourceY = (0 - top) / scale;
+        let sourceSize = size / scale;
+
+        sourceX = Math.max(0, Math.min(image.naturalWidth - sourceSize, sourceX));
+        sourceY = Math.max(0, Math.min(image.naturalHeight - sourceSize, sourceY));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 800;
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+            image,
+            sourceX, sourceY, sourceSize, sourceSize,
+            0, 0, canvas.width, canvas.height
+        );
+
+        canvas.toBlob(function (blob) {
+            if (!blob) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Photo';
+                alert('Could not crop this image. Please try another photo.');
+                return;
+            }
+
+            const croppedFile = new File(
+                [blob],
+                'profile-photo-' + Date.now() + '.jpg',
+                { type: 'image/jpeg', lastModified: Date.now() }
+            );
+            const transfer = new DataTransfer();
+            transfer.items.add(croppedFile);
+            input.files = transfer.files;
+
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+
+            // Saving the crop also saves the profile photo immediately,
+            // matching the previous one-click upload behaviour.
+            input.form.submit();
+        }, 'image/jpeg', 0.93);
+    });
+})();
 </script>
 {% endblock %}
