@@ -103,8 +103,10 @@ Visitors can submit messages directly through the portfolio.
 
 Messages can then be handled through the administration dashboard, while email integration can be used to forward or notify the portfolio owner.
 
-### 🗄️ SQLite Database
-Portfolio content, settings, user data, and administrative information are stored in a local SQLite database. The database is generated automatically on first boot and is intentionally ignored by Git so runtime data and account information are not committed to the repository.
+### 🗄️ Durable SQLite Persistence
+The application still uses SQLite locally for simple, fast queries, but production deployments can use Supabase Storage as the durable source of truth. On startup, the latest database snapshot is restored from Supabase. After every committed database change, a fresh snapshot is uploaded automatically.
+
+Uploaded profile, project, and certificate images are also copied to Supabase Storage and restored on demand. This keeps live data independent from GitHub and prevents normal redeploys from resetting the portfolio.
 
 ---
 
@@ -241,14 +243,23 @@ ADMIN_PASS=replace-with-a-strong-password
 ALLOW_REGISTRATION=0
 ```
 
-Optional persistent-storage paths for deployments with a mounted disk:
+For durable persistence on an ephemeral host such as Render Free, configure the Supabase Storage integration:
+
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-project-anon-or-publishable-key
+SUPABASE_APP_KEY=your-private-portfolio-sync-key
+SUPABASE_BUCKET=portfolio-files
+```
+
+The Supabase bucket is private and protected by Row Level Security plus an application-specific server key. Keep `SUPABASE_APP_KEY` in the hosting provider's environment variables and never commit it to Git.
+
+Optional local/persistent-disk overrides remain available:
 
 ```env
 DATABASE_PATH=/var/data/portfolio.db
 UPLOAD_FOLDER=/var/data/uploads
 ```
-
-Without persistent storage, SQLite data and uploaded files can be lost when an ephemeral hosting service restarts or redeploys the application.
 
 Optional email configuration:
 
@@ -288,6 +299,8 @@ The project includes several practical security measures:
 - Maximum upload-size limit.
 - Secure generated filenames for uploaded media.
 - Environment-variable configuration for credentials and API keys.
+- Private Supabase Storage persistence with RLS-protected access.
+- Automatic database snapshot restore/sync across redeploys.
 - OTP-based verification workflows.
 - CSRF protection on state-changing forms.
 - SameSite / HttpOnly session-cookie hardening.
@@ -337,7 +350,7 @@ This project demonstrates practical experience with:
 
 ## 🔮 Possible Future Improvements
 
-- Move from SQLite to PostgreSQL for larger deployments.
+- Move from synchronized SQLite snapshots to PostgreSQL if the application grows to multiple concurrent server instances.
 - Add database migrations with Flask-Migrate / Alembic.
 - Add automated tests.
 - Add production-grade distributed rate limiting for authentication and public endpoints.
