@@ -782,7 +782,7 @@ def init_db():
                     "Computer & Control Engineering",
                     "2024",
                     "2029 (Expected)",
-                    "CGPA: 3.986/4.00. Ranked 1st in the Computer & Control Department and 1st overall in the Faculty of Engineering.",
+                    "CGPA: 3.986/4.00 (97.68%). Completed 68 credit hours. Ranked 1st in the Computer & Control Department and 1st overall in the Faculty of Engineering.",
                     1,
                 ),
             ],
@@ -827,6 +827,10 @@ def init_db():
                 ("Problem Solving", "Tools & Strengths", "Strength", "🧩", 28),
                 ("Teamwork", "Tools & Strengths", "Strength", "🤝", 29),
                 ("Time Management", "Tools & Strengths", "Strength", "⏱️", 30),
+
+                ("Arabic", "Languages", "Native", "🌍", 31),
+                ("English", "Languages", "B2", "🌍", 32),
+                ("German", "Languages", "A2", "🌍", 33),
             ],
         )
         db.commit()
