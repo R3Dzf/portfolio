@@ -84,6 +84,20 @@ def clean_http_url(value):
     return None
 
 
+def media_url(value):
+    """Return a safe URL for local uploaded media or approved remote media."""
+    value = (value or "").strip()
+    if not value:
+        return ""
+    remote = clean_http_url(value)
+    if remote:
+        return remote
+    return url_for("uploaded_file", filename=value)
+
+
+app.jinja_env.globals["media_url"] = media_url
+
+
 def generate_otp():
     return f"{secrets.randbelow(900000) + 100000:06d}"
 
@@ -827,7 +841,7 @@ def init_db():
                     "https://github.com/R3Dzf/Signal-Flow-Graph-Solver",
                     "https://sfg-solver.onrender.com/",
                     None,
-                    None,
+                    "https://raw.githubusercontent.com/R3Dzf/Signal-Flow-Graph-Solver/main/docs/graph-editor.png",
                 ),
                 (
                     "Sign Language Translator",
@@ -836,7 +850,7 @@ def init_db():
                     "https://github.com/R3Dzf/sign-language-translator",
                     None,
                     None,
-                    None,
+                    "https://raw.githubusercontent.com/R3Dzf/sign-language-translator/main/assets/screenshots/translator-demo.png",
                 ),
                 (
                     "Full-Stack Portfolio & CMS",
