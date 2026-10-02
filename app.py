@@ -48,6 +48,41 @@ app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=12)
 app.config["ALLOW_REGISTRATION"] = os.environ.get("ALLOW_REGISTRATION", "0") == "1"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+
+@app.after_request
+def set_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=()",
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'",
+    )
+
+    if request.is_secure:
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+
+    if request.path.startswith(("/admin", "/login", "/register", "/forgot-password", "/reset-password", "/verify-")):
+        response.headers["Cache-Control"] = "no-store"
+
+    return response
+
+
 DATABASE = os.environ.get("DATABASE_PATH") or os.path.join(app.root_path, "portfolio.db")
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or os.path.join(app.root_path, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
