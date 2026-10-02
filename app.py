@@ -16,7 +16,7 @@ import json
 import urllib.request
 import urllib.error
 import datetime
-import random
+import re
 import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -27,6 +27,8 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
 # App configuration
@@ -34,6 +36,14 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4 MB upload limit
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = (
+    os.environ.get("SESSION_COOKIE_SECURE") == "1"
+    or os.environ.get("RENDER", "").lower() == "true"
+)
+app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=12)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 DATABASE = os.path.join(app.root_path, "portfolio.db")
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
@@ -47,8 +57,58 @@ MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
 MAIL_RECIPIENT = os.environ.get("MAIL_RECIPIENT")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+ALLOWED_THEMES = {"default", "bento", "cyberpunk"}
+
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def clean_hex_color(value, fallback):
+    value = (value or "").strip()
+    return value if HEX_COLOR_RE.fullmatch(value) else fallback
+
+
+def clean_http_url(value):
+    value = (value or "").strip()
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return value
+    return None
+
+
+def generate_otp():
+    return f"{secrets.randbelow(900000) + 100000:06d}"
+
+
+def csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.before_request
+def verify_csrf():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+
+    expected = session.get("_csrf_token")
+    supplied = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token", "")
+    if expected and supplied and secrets.compare_digest(str(expected), str(supplied)):
+        return None
+
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"success": False, "error": "Invalid or expired request token. Refresh the page and try again."}), 400
+    abort(400)
 
 
 def save_upload(file, prefix="img"):
@@ -1031,45 +1091,6 @@ def user_portfolio(username):
     if user["account_status"] == "suspended":
         return render_template("errors/suspended.html", username=username), 403
     return render_user_portfolio(user["id"])
-    db = get_db()
-    
-    # 1. Projects
-    projects = db.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
-    
-    # 2. Skills grouped by category
-    skills_raw = db.execute("SELECT * FROM skills ORDER BY category ASC, sort_order ASC, id ASC").fetchall()
-    skill_categories = {}
-    for s in skills_raw:
-        cat = s["category"] or "General"
-        if cat not in skill_categories:
-            skill_categories[cat] = []
-        skill_categories[cat].append(s)
-
-    # 3. Education
-    education_list = db.execute("SELECT * FROM education ORDER BY sort_order ASC, start_year DESC").fetchall()
-
-    # 4. Work Experience & Training
-    experiences_list = db.execute("SELECT * FROM experiences ORDER BY sort_order ASC, id ASC").fetchall()
-
-    # 5. Services
-    services_list = db.execute("SELECT * FROM services ORDER BY sort_order ASC, id ASC").fetchall()
-
-    # 6. Achievements & Certifications
-    achievements_list = db.execute("SELECT * FROM achievements ORDER BY sort_order ASC, id ASC").fetchall()
-
-    # 7. Testimonials
-    testimonials_list = db.execute("SELECT * FROM testimonials ORDER BY sort_order ASC, id ASC").fetchall()
-
-    return render_template(
-        "index.html",
-        projects=projects,
-        skill_categories=skill_categories,
-        education_list=education_list,
-        experiences_list=experiences_list,
-        services_list=services_list,
-        achievements_list=achievements_list,
-        testimonials_list=testimonials_list,
-    )
 
 
 @app.route("/contact", methods=["POST"])
@@ -1096,10 +1117,19 @@ def contact():
         except Exception:
             target_user_id = 1
 
-    if not sender_name or not sender_email or not message:
+    if (
+        not sender_name
+        or not sender_email
+        or not message
+        or len(sender_name) > 100
+        or len(sender_email) > 254
+        or len(message) > 5000
+        or not EMAIL_RE.fullmatch(sender_email)
+    ):
+        error = "Please enter a valid name, email address, and message."
         if is_ajax:
-            return jsonify({"success": False, "error": "Name, email, and message are required."}), 400
-        flash("Name, email, and message are required.", "danger")
+            return jsonify({"success": False, "error": error}), 400
+        flash(error, "danger")
         return redirect(url_for("index") + "#contact")
 
     db = get_db()
@@ -1146,6 +1176,10 @@ def auth_register():
             flash("Username, Email, and Password are required.", "danger")
             return render_template("auth/register.html")
 
+        if len(username) > 30 or len(full_name) > 100 or len(email) > 254 or not EMAIL_RE.fullmatch(email):
+            flash("Please enter a valid name, username, and email address.", "danger")
+            return render_template("auth/register.html")
+
         if len(username) < 3 or not username.isalnum():
             flash("Username must be at least 3 alphanumeric characters (letters and numbers only).", "danger")
             return render_template("auth/register.html")
@@ -1161,7 +1195,7 @@ def auth_register():
             return redirect(url_for("admin_login"))
 
         # Generate 6-digit OTP with 5 min expiry
-        otp_code = str(random.randint(100000, 999999))
+        otp_code = generate_otp()
         otp_expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
 
         cur = db.cursor()
@@ -1281,7 +1315,7 @@ def auth_resend_otp():
         return redirect(url_for("auth_register"))
 
     # Generate new OTP
-    otp_code = str(random.randint(100000, 999999))
+    otp_code = generate_otp()
     otp_expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
         "UPDATE users SET verification_code = ?, code_expires_at = ? WHERE id = ?",
@@ -1478,8 +1512,8 @@ def super_admin_edit_user(target_user_id):
 
     # Update password if provided
     if new_password:
-        if len(new_password) < 6:
-            flash("New password must be at least 6 characters.", "warning")
+        if len(new_password) < 8:
+            flash("New password must be at least 8 characters.", "warning")
         else:
             db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_password), target_user_id))
 
@@ -1488,7 +1522,7 @@ def super_admin_edit_user(target_user_id):
     return redirect(url_for("super_admin_dashboard"))
 
 
-@app.route("/super-admin/user/impersonate/<int:target_user_id>")
+@app.route("/super-admin/user/impersonate/<int:target_user_id>", methods=["POST"])
 @superadmin_required
 def super_admin_impersonate(target_user_id):
     db = get_db()
@@ -1545,7 +1579,7 @@ def admin_profile():
                     return redirect(url_for("admin_profile"))
 
                 # Generate 6-digit OTP code for email change verification
-                otp_code = str(random.randint(100000, 999999))
+                otp_code = generate_otp()
                 otp_exp = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
 
                 session["pending_new_email"] = new_email
@@ -1648,16 +1682,17 @@ def admin_settings():
         bio = request.form.get("bio", "").strip()
         footer_text = request.form.get("footer_text", "").strip() or f"© 2026 {name}"
         email = request.form.get("email", "").strip() or None
-        github_url = request.form.get("github_url", "").strip() or None
-        linkedin_url = request.form.get("linkedin_url", "").strip() or None
-        twitter_url = request.form.get("twitter_url", "").strip() or None
-        resume_url = request.form.get("resume_url", "").strip() or None
-        color_primary = request.form.get("color_primary", "#6c63ff").strip()
-        color_accent = request.form.get("color_accent", "#ff6b6b").strip()
-        color_bg = request.form.get("color_bg", "#0c0c12").strip()
-        color_surface = request.form.get("color_surface", "#161622").strip()
-        color_text = request.form.get("color_text", "#f0f0f8").strip()
-        theme_name = request.form.get("theme_name", "default").strip()
+        github_url = clean_http_url(request.form.get("github_url"))
+        linkedin_url = clean_http_url(request.form.get("linkedin_url"))
+        twitter_url = clean_http_url(request.form.get("twitter_url"))
+        resume_url = clean_http_url(request.form.get("resume_url"))
+        color_primary = clean_hex_color(request.form.get("color_primary"), "#6c63ff")
+        color_accent = clean_hex_color(request.form.get("color_accent"), "#ff6b6b")
+        color_bg = clean_hex_color(request.form.get("color_bg"), "#0c0c12")
+        color_surface = clean_hex_color(request.form.get("color_surface"), "#161622")
+        color_text = clean_hex_color(request.form.get("color_text"), "#f0f0f8")
+        requested_theme = request.form.get("theme_name", "default").strip()
+        theme_name = requested_theme if requested_theme in ALLOWED_THEMES else "default"
 
         # Update user password if provided
         new_admin_pass = request.form.get("admin_password", "").strip()
@@ -1716,9 +1751,9 @@ def admin_add_project():
         title = request.form["title"].strip()
         description = request.form["description"].strip()
         tech_stack = request.form["tech_stack"].strip()
-        github_link = request.form.get("github_link", "").strip() or None
-        live_demo_link = request.form.get("live_demo_link", "").strip() or None
-        certificate_url = request.form.get("certificate_url", "").strip() or None
+        github_link = clean_http_url(request.form.get("github_link"))
+        live_demo_link = clean_http_url(request.form.get("live_demo_link"))
+        certificate_url = clean_http_url(request.form.get("certificate_url"))
 
         image = None
         if "image" in request.files:
@@ -1757,9 +1792,9 @@ def admin_edit_project(project_id):
         title = request.form["title"].strip()
         description = request.form["description"].strip()
         tech_stack = request.form["tech_stack"].strip()
-        github_link = request.form.get("github_link", "").strip() or None
-        live_demo_link = request.form.get("live_demo_link", "").strip() or None
-        certificate_url = request.form.get("certificate_url", "").strip() or None
+        github_link = clean_http_url(request.form.get("github_link"))
+        live_demo_link = clean_http_url(request.form.get("live_demo_link"))
+        certificate_url = clean_http_url(request.form.get("certificate_url"))
 
         image = project["image"]
         if "image" in request.files:
@@ -2127,7 +2162,7 @@ def admin_add_achievement():
     title = request.form.get("title", "").strip()
     issuer = request.form.get("issuer", "").strip() or None
     date_earned = request.form.get("date_earned", "").strip() or None
-    credential_url = request.form.get("credential_url", "").strip() or None
+    credential_url = clean_http_url(request.form.get("credential_url"))
     credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
@@ -2167,7 +2202,7 @@ def admin_edit_achievement(item_id):
     title = request.form.get("title", "").strip()
     issuer = request.form.get("issuer", "").strip() or None
     date_earned = request.form.get("date_earned", "").strip() or None
-    credential_url = request.form.get("credential_url", "").strip() or None
+    credential_url = clean_http_url(request.form.get("credential_url"))
     credential_id = request.form.get("credential_id", "").strip() or None
     icon = request.form.get("icon", "🏆").strip() or "🏆"
     description = request.form.get("description", "").strip() or None
@@ -2322,7 +2357,7 @@ def auth_forgot_password():
         user = db.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
 
         if user:
-            reset_token = uuid.uuid4().hex
+            reset_token = secrets.token_urlsafe(32)
             expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
             expires_str = expires_at.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -2332,10 +2367,9 @@ def auth_forgot_password():
             reset_url = url_for("auth_reset_password", token=reset_token, _external=True)
             send_password_reset_email(email, user["username"], reset_url)
 
-            flash("✅ Password reset link sent to your email! Check your inbox.", "success")
-            return redirect(url_for("admin_login"))
-        else:
-            flash("No account registered with that email address.", "danger")
+        # Always use the same response so account existence is not disclosed.
+        flash("If an account exists for that email, a password-reset link has been sent.", "success")
+        return redirect(url_for("admin_login"))
 
     return render_template("auth/forgot_password.html")
 
@@ -2364,6 +2398,10 @@ def auth_reset_password(token):
 
         if not new_password or new_password != confirm_password:
             flash("Passwords do not match or are empty.", "danger")
+            return render_template("auth/reset_password.html", token=token)
+
+        if len(new_password) < 8:
+            flash("Password must be at least 8 characters long.", "danger")
             return render_template("auth/reset_password.html", token=token)
 
         db.execute("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?", (generate_password_hash(new_password), user["id"]))
