@@ -68,7 +68,7 @@
         {# Profile Photo #}
         {% if settings and settings.profile_photo %}
         <div class="hero__photo-wrap reveal">
-            <img src="{{ url_for('static', filename='uploads/' + settings.profile_photo) }}"
+            <img src="{{ url_for('uploaded_file', filename=settings.profile_photo) }}"
                  alt="{{ settings.name }}" class="hero__photo">
         </div>
         {% else %}
@@ -276,7 +276,7 @@
                 {# Project Image (if present) #}
                 {% if p.image %}
                 <div class="project-card__img-wrap" onclick="openProjectModal({{ loop.index0 }})" title="Click to view details">
-                    <img src="{{ url_for('static', filename='uploads/' + p.image) }}"
+                    <img src="{{ url_for('uploaded_file', filename=p.image) }}"
                          alt="{{ p.title }}" class="project-card__img" loading="lazy">
                     <div class="project-card__img-overlay">
                         <span class="project-card__quick-view">🔍 Quick View</span>
@@ -343,7 +343,7 @@
                     "title": {{ p.title | tojson }},
                     "description": {{ p.description | tojson }},
                     "tech_stack": {{ p.tech_stack | tojson }},
-                    "image": {% if p.image %}{{ url_for('static', filename='uploads/' + p.image) | tojson }}{% else %}null{% endif %},
+                    "image": {% if p.image %}{{ url_for('uploaded_file', filename=p.image) | tojson }}{% else %}null{% endif %},
                     "github_link": {% if p.github_link %}{{ p.github_link | tojson }}{% else %}null{% endif %},
                     "live_demo_link": {% if p.live_demo_link %}{{ p.live_demo_link | tojson }}{% else %}null{% endif %},
                     "certificate_url": {% if p.certificate_url %}{{ p.certificate_url | tojson }}{% else %}null{% endif %}
@@ -369,8 +369,8 @@
             <div class="achievement-card reveal" style="--delay: {{ loop.index0 * 0.1 }}s;">
                 {# Certificate Thumbnail / Icon #}
                 {% if ach.image %}
-                <div class="achievement-card__img-wrap" onclick='openCertModal({{ url_for("static", filename="uploads/" + ach.image) | tojson }}, {{ ach.title | tojson }}, {{ (ach.issuer or "") | tojson }})' title="Click to view full certificate">
-                    <img src="{{ url_for('static', filename='uploads/' + ach.image) }}"
+                <div class="achievement-card__img-wrap" onclick='openCertModal({{ url_for("uploaded_file", filename=ach.image) | tojson }}, {{ ach.title | tojson }}, {{ (ach.issuer or "") | tojson }})' title="Click to view full certificate">
+                    <img src="{{ url_for('uploaded_file', filename=ach.image) }}"
                          alt="{{ ach.title }}" class="achievement-card__img" loading="lazy">
                     <span class="achievement-card__zoom-hint">🔍 View</span>
                 </div>
@@ -410,7 +410,7 @@
                         </a>
                         {% endif %}
                         {% if ach.image %}
-                        <button type="button" class="btn btn--sm btn--outline" onclick="openCertModal('{{ url_for('static', filename='uploads/' + ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')">
+                        <button type="button" class="btn btn--sm btn--outline" onclick="openCertModal('{{ url_for('uploaded_file', filename=ach.image) }}', '{{ ach.title | escape }}', '{{ ach.issuer or '' | escape }}')">
                             📜 View Certificate
                         </button>
                         {% endif %}
