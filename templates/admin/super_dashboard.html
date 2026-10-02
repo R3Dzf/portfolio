@@ -111,7 +111,7 @@
                         <td style="font-size: 0.82rem; color: var(--clr-text-muted);">{{ u.created_at[:10] if u.created_at else '--' }}</td>
                         <td>
                             <div class="cell-actions" style="justify-content: flex-end; gap: 6px;">
-                                <button type="button" class="btn btn--sm btn--primary" onclick="openEditUserModal({{ u.id }}, '{{ u.username }}', '{{ u.email }}', '{{ u.role }}', '{{ u.plan_tier }}', '{{ u.account_status }}')" title="Edit User Details & Email">
+                                <button type="button" class="btn btn--sm btn--primary" onclick='openEditUserModal({{ u.id }}, {{ u.username | tojson }}, {{ u.email | tojson }}, {{ u.role | tojson }}, {{ u.plan_tier | tojson }}, {{ u.account_status | tojson }})' title="Edit User Details & Email">
                                     ✏️ Edit
                                 </button>
                                 <form method="POST" action="{{ url_for('super_admin_impersonate', target_user_id=u.id) }}" style="display: inline;">
