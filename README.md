@@ -6,7 +6,14 @@ A full-stack portfolio builder and content-management platform built with Flask.
 
 Create a personal portfolio, manage it from a dashboard, publish projects and achievements, receive contact messages, and keep live data persistent across deployments.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-ahmed--bosha.onrender.com-6C63FF?style=for-the-badge)](https://ahmed-bosha.onrender.com)
+## 🌐 Live Website
+
+### 👉 [Open the live platform](https://ahmed-bosha.onrender.com)
+
+**Try the portfolio, sign in, or create your own portfolio directly from the live website.**
+
+[![Open Live Website](https://img.shields.io/badge/Open%20Live%20Website-ahmed--bosha.onrender.com-6C63FF?style=for-the-badge)](https://ahmed-bosha.onrender.com)
+
 [![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-Local%20Runtime-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
