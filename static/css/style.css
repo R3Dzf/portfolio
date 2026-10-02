@@ -1768,6 +1768,9 @@ img { max-width: 100%; display: block; }
 .photo-preview__img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--clr-primary); }
 .photo-preview__actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
 .photo-preview__name { width: 100%; margin-top: var(--space-xs); }
+#profilePhotoStatus:empty { display: none; }
+#profilePhotoStatus.is-success { color: var(--clr-success, #22c55e); font-weight: 700; }
+#profilePhotoStatus.is-error { color: var(--clr-danger, #ef4444); font-weight: 700; }
 .photo-upload__label {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: var(--space-lg); background: var(--clr-bg);
