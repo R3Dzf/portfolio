@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💼 Ahmed Bosha Portfolio & CMS
+# 💼 Ahmed Youssef Bosha Portfolio & CMS
 
 ### A full-stack personal portfolio platform with a built-in CMS, authentication, admin dashboard, image uploads, contact messaging, and email workflows.
 
@@ -104,7 +104,7 @@ Visitors can submit messages directly through the portfolio.
 Messages can then be handled through the administration dashboard, while email integration can be used to forward or notify the portfolio owner.
 
 ### 🗄️ SQLite Database
-Portfolio content, settings, user data, and administrative information are stored in a local SQLite database, making the project easy to run locally while still supporting a full dynamic backend.
+Portfolio content, settings, user data, and administrative information are stored in a local SQLite database. The database is generated automatically on first boot and is intentionally ignored by Git so runtime data and account information are not committed to the repository.
 
 ---
 
@@ -155,7 +155,7 @@ Projects Skills  Education  Experience ...
 portfolio/
 │
 ├── app.py                  # Main Flask application and backend logic
-├── portfolio.db            # SQLite database
+├── portfolio.db            # Generated SQLite database (ignored by Git)
 ├── requirements.txt        # Python dependencies
 ├── Procfile                # Production process configuration
 │
@@ -336,8 +336,8 @@ This project demonstrates practical experience with:
 
 ## 👨‍💻 Author
 
-**Ahmed Youssef (Ahmed Bosha)**  
-Computer & Control Engineering Student
+**Ahmed Youssef Bosha**  
+Computer & Control Engineering Student — Tanta University
 
 GitHub: [@R3Dzf](https://github.com/R3Dzf)
 
