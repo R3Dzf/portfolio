@@ -186,7 +186,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
             err = e.read().decode("utf-8")
             print(f"[BREVO HTTP ERROR {e.code}] {err}")
             # Automatic retry with alternative sender email if Brevo rejects sender
-            alt_senders = ["ahmedyoussefmansourbosha@gmail.com", "ahmedyoussefmansourbosha@gmail.com"]
+            alt_senders = ["ahmedyoussefmansourbosha@gmail.com"]
             for alt in alt_senders:
                 if alt != sender_email_val:
                     try:
@@ -284,7 +284,7 @@ def send_otp_email(to_email, full_name, otp_code):
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 480px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 16px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box;">
         <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 24px 16px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Account Verification System</p>
         </div>
         <div style="padding: 24px 16px; box-sizing: border-box;">
@@ -317,7 +317,7 @@ def send_password_reset_email(to_email, username, reset_url):
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
         <div style="background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%); padding: 32px 28px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">Password Recovery Center</p>
         </div>
         <div style="padding: 32px 28px;">
@@ -350,7 +350,7 @@ def notify_new_message(sender_name, sender_email, message_content, recipient_ema
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
         <div style="background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%); padding: 32px 28px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Bosha<span style="opacity: 0.85;">Craft</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">New Contact Form Submission</p>
         </div>
         <div style="padding: 32px 28px;">
