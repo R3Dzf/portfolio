@@ -5,48 +5,51 @@
 <!-- ===== Navigation ===== -->
 <nav class="navbar">
     <div class="container navbar__inner">
-        <a href="#" class="navbar__logo">
-            {% if settings and settings.logo_text %}
-                {{ settings.logo_text }}
-            {% elif settings and settings.name %}
-                {% set parts = settings.name.split() %}
-                {% if parts | length > 1 %}
-                    {{ parts[0] }}<span class="accent">{{ parts[1:] | join(' ') }}</span>
-                {% else %}
-                    {{ settings.name }}
-                {% endif %}
+        <a href="#about" class="navbar__logo" aria-label="Back to top">
+            {% set brand_name = settings.name if settings and settings.name else 'Ahmed Bosha' %}
+            {% set brand_parts = brand_name.split() %}
+            {% if brand_parts | length > 1 %}
+                <span>{{ brand_parts[0] }}</span><span class="accent">{{ brand_parts[1:] | join(' ') }}</span>
             {% else %}
-                Ahmed<span class="accent">Bosha</span>
+                <span>{{ brand_name }}</span>
             {% endif %}
         </a>
+
         <ul class="navbar__links">
             <li><a href="#about">About</a></li>
             {% if education_list %}<li><a href="#education">Education</a></li>{% endif %}
             {% if skill_categories %}<li><a href="#skills">Skills</a></li>{% endif %}
-            {% if experiences_list %}<li><a href="#experience">Experience</a></li>{% endif %}
-            {% if services_list %}<li><a href="#services">Services</a></li>{% endif %}
             <li><a href="#projects">Projects</a></li>
-            {% if achievements_list %}<li><a href="#achievements">Achievements</a></li>{% endif %}
             <li><a href="#contact">Contact</a></li>
+
+            <li class="navbar__mobile-only navbar__mobile-account">
+                {% if session.get('user_id') %}
+                <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                {% else %}
+                <a href="{{ url_for('admin_login') }}">Login</a>
+                <a href="{{ url_for('auth_register') }}">Register</a>
+                {% endif %}
+            </li>
         </ul>
 
-        <div class="navbar__actions" style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
-            {% if session.get('user_id') %}
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;">
-                ⚙️ Dashboard
-            </a>
-            {% else %}
-            <a href="{{ url_for('admin_login') }}" class="btn btn--sm btn--outline" style="font-size: 0.82rem; padding: 6px 12px; border-radius: 8px;">
-                Login
-            </a>
-            <a href="{{ url_for('auth_register') }}" class="btn btn--sm btn--primary" style="font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;">
-                Register
-            </a>
-            {% endif %}
+        <div class="navbar__actions">
+            <div class="navbar__account-actions">
+                {% if session.get('user_id') %}
+                <a href="{{ url_for('admin_dashboard') }}" class="navbar__account-link navbar__account-link--primary">
+                    Dashboard
+                </a>
+                {% else %}
+                <a href="{{ url_for('admin_login') }}" class="navbar__account-link navbar__account-link--login">
+                    Login
+                </a>
+                <a href="{{ url_for('auth_register') }}" class="navbar__account-link navbar__account-link--primary">
+                    Register
+                </a>
+                {% endif %}
+            </div>
 
-            <!-- Theme Toggle Button (Light/Dark) -->
             <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle Theme" title="Toggle Light / Dark Theme">
-                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="19" height="19">
+                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                     <circle cx="12" cy="12" r="5"></circle>
                     <line x1="12" y1="1" x2="12" y2="3"></line>
                     <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -57,7 +60,7 @@
                     <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
                     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                 </svg>
-                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="19" height="19">
+                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
