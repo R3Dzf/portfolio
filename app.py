@@ -47,8 +47,8 @@ app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(hours=12)
 app.config["ALLOW_REGISTRATION"] = os.environ.get("ALLOW_REGISTRATION", "0") == "1"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-DATABASE = os.path.join(app.root_path, "portfolio.db")
-UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+DATABASE = os.environ.get("DATABASE_PATH") or os.path.join(app.root_path, "portfolio.db")
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or os.path.join(app.root_path, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Mail configuration
@@ -976,6 +976,9 @@ def init_db():
 def ensure_database():
     """Create the database on first boot, including Gunicorn deployments."""
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    database_dir = os.path.dirname(os.path.abspath(DATABASE))
+    if database_dir:
+        os.makedirs(database_dir, exist_ok=True)
     if not os.path.exists(DATABASE):
         init_db()
 
