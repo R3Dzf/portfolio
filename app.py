@@ -25,7 +25,7 @@ from email.mime.multipart import MIMEMultipart
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, session, g, abort, jsonify, send_from_directory,
+    flash, session, g, abort, jsonify, send_from_directory, Response,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -88,13 +88,12 @@ DATABASE = os.environ.get("DATABASE_PATH") or os.path.join(app.root_path, "portf
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or os.path.join(app.root_path, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
-# Optional durable persistence through Supabase.
-# SQLite stays local for fast queries. A base64 snapshot is stored in a
-# protected Postgres table, while public portfolio images live in Storage.
+# Durable persistence through Supabase Postgres.
+# SQLite stays local for fast queries. Database snapshots and uploaded images
+# are mirrored to protected Postgres tables so Render redeploys do not reset data.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
 SUPABASE_APP_KEY = os.environ.get("SUPABASE_APP_KEY", "").strip()
-SUPABASE_MEDIA_BUCKET = os.environ.get("SUPABASE_MEDIA_BUCKET", "portfolio-media").strip() or "portfolio-media"
 CLOUD_STORAGE_ENABLED = bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_APP_KEY)
 DB_SYNC_READY = False
 DB_SYNC_LOCK = threading.Lock()
@@ -188,9 +187,10 @@ def verify_csrf():
 
 
 def _supabase_headers(content_type=None, prefer=None):
+    # Publishable keys belong in the apikey header. The gateway maps that to
+    # the anon role; our RLS policies additionally require x-app-api-key.
     headers = {
         "apikey": SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
         "x-app-api-key": SUPABASE_APP_KEY,
     }
     if content_type:
@@ -200,52 +200,9 @@ def _supabase_headers(content_type=None, prefer=None):
     return headers
 
 
-def _media_object_url(remote_path):
-    bucket = quote(SUPABASE_MEDIA_BUCKET, safe="")
-    path = quote(remote_path.lstrip("/"), safe="/")
-    return f"{SUPABASE_URL}/storage/v1/object/{bucket}/{path}"
-
-
-def media_public_url(remote_path):
-    bucket = quote(SUPABASE_MEDIA_BUCKET, safe="")
-    path = quote(remote_path.lstrip("/"), safe="/")
-    return f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
-
-
-def storage_upload_bytes(remote_path, payload, content_type="application/octet-stream"):
-    if not CLOUD_STORAGE_ENABLED:
-        return False
-
-    headers = _supabase_headers(content_type=content_type)
-    headers["x-upsert"] = "true"
-    req = urllib.request.Request(
-        _media_object_url(remote_path),
-        data=payload,
-        headers=headers,
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=30) as response:
-        response.read()
-    return True
-
-
-def storage_delete_object(remote_path):
-    if not CLOUD_STORAGE_ENABLED:
-        return False
-
-    req = urllib.request.Request(
-        _media_object_url(remote_path),
-        headers=_supabase_headers(),
-        method="DELETE",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            response.read()
-        return True
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return False
-        raise
+def _postgrest_url(table, query=""):
+    base = f"{SUPABASE_URL}/rest/v1/{table}"
+    return f"{base}?{query}" if query else base
 
 
 def restore_database_from_cloud():
@@ -253,12 +210,8 @@ def restore_database_from_cloud():
     if not CLOUD_STORAGE_ENABLED:
         return False
 
-    url = (
-        f"{SUPABASE_URL}/rest/v1/portfolio_snapshots"
-        "?id=eq.main&select=payload&limit=1"
-    )
     req = urllib.request.Request(
-        url,
+        _postgrest_url("portfolio_snapshots", "id=eq.main&select=payload&limit=1"),
         headers=_supabase_headers(),
         method="GET",
     )
@@ -304,7 +257,7 @@ def sync_database_to_cloud():
             }).encode("utf-8")
 
             req = urllib.request.Request(
-                f"{SUPABASE_URL}/rest/v1/portfolio_snapshots?on_conflict=id",
+                _postgrest_url("portfolio_snapshots", "on_conflict=id"),
                 data=body,
                 headers=_supabase_headers(
                     content_type="application/json",
@@ -324,13 +277,89 @@ def sync_database_to_cloud():
             return False
 
 
+def cloud_save_media(filename, content_type, payload):
+    if not CLOUD_STORAGE_ENABLED:
+        return False
+
+    body = json.dumps({
+        "filename": filename,
+        "content_type": content_type or "application/octet-stream",
+        "payload": base64.b64encode(payload).decode("ascii"),
+        "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        _postgrest_url("portfolio_media", "on_conflict=filename"),
+        data=body,
+        headers=_supabase_headers(
+            content_type="application/json",
+            prefer="resolution=merge-duplicates,return=minimal",
+        ),
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        response.read()
+    return True
+
+
+def cloud_get_media(filename):
+    if not CLOUD_STORAGE_ENABLED:
+        return None
+
+    safe_filename = quote(filename, safe="")
+    req = urllib.request.Request(
+        _postgrest_url(
+            "portfolio_media",
+            f"filename=eq.{safe_filename}&select=content_type,payload&limit=1",
+        ),
+        headers=_supabase_headers(),
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            rows = json.loads(response.read().decode("utf-8") or "[]")
+        if not rows:
+            return None
+        return (
+            rows[0].get("content_type") or "application/octet-stream",
+            base64.b64decode(rows[0]["payload"], validate=True),
+        )
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        print(f"[SUPABASE] Media restore failed ({exc.code}): {body}")
+        return None
+    except Exception as exc:
+        print(f"[SUPABASE] Media restore failed: {exc}")
+        return None
+
+
+def cloud_delete_media(filename):
+    if not CLOUD_STORAGE_ENABLED:
+        return False
+
+    safe_filename = quote(filename, safe="")
+    req = urllib.request.Request(
+        _postgrest_url("portfolio_media", f"filename=eq.{safe_filename}"),
+        headers=_supabase_headers(prefer="return=minimal"),
+        method="DELETE",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            response.read()
+        return True
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        print(f"[SUPABASE] Media delete failed ({exc.code}): {body}")
+        return False
+
+
 def commit_and_sync(db):
     db.commit()
     return sync_database_to_cloud()
 
 
 def save_upload(file, prefix="img"):
-    """Save an uploaded image locally and mirror it to Supabase Storage."""
+    """Save an uploaded image locally and mirror it to Supabase Postgres."""
     ext = file.filename.rsplit(".", 1)[1].lower()
     filename = f"{prefix}_{uuid.uuid4().hex[:8]}.{ext}"
     local_path = os.path.join(UPLOAD_FOLDER, filename)
@@ -339,10 +368,10 @@ def save_upload(file, prefix="img"):
     if CLOUD_STORAGE_ENABLED:
         try:
             with open(local_path, "rb") as handle:
-                storage_upload_bytes(
-                    f"uploads/{filename}",
+                cloud_save_media(
+                    filename,
+                    file.mimetype or "application/octet-stream",
                     handle.read(),
-                    content_type=file.mimetype or "application/octet-stream",
                 )
         except Exception:
             try:
@@ -355,7 +384,7 @@ def save_upload(file, prefix="img"):
 
 
 def delete_upload(filename):
-    """Delete an uploaded media file from local cache and Supabase Storage."""
+    """Delete an uploaded media file from local cache and Supabase Postgres."""
     if not filename or clean_http_url(filename):
         return
 
@@ -364,10 +393,7 @@ def delete_upload(filename):
         os.remove(path)
 
     if CLOUD_STORAGE_ENABLED:
-        try:
-            storage_delete_object(f"uploads/{filename}")
-        except Exception as exc:
-            print(f"[SUPABASE] Media delete failed for {filename}: {exc}")
+        cloud_delete_media(filename)
 
 
 # ---------------------------------------------------------------------------
@@ -1246,7 +1272,7 @@ def ensure_database():
     if database_dir:
         os.makedirs(database_dir, exist_ok=True)
 
-    # Supabase's protected snapshot table is the durable source of truth.
+    # Supabase Postgres is the durable source of truth.
     restore_database_from_cloud()
 
     # init_db() is idempotent: it creates missing tables/columns and seeds
@@ -1351,8 +1377,12 @@ def uploaded_file(filename):
             except NotFound:
                 pass
 
-        if CLOUD_STORAGE_ENABLED:
-            return redirect(media_public_url(f"uploads/{filename}"), code=302)
+        media = cloud_get_media(filename)
+        if media:
+            content_type, payload = media
+            response = Response(payload, mimetype=content_type)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
         raise
 
 
@@ -2175,8 +2205,14 @@ def admin_settings():
         if "profile_photo" in request.files:
             file = request.files["profile_photo"]
             if file and file.filename and allowed_file(file.filename):
+                try:
+                    new_photo = save_upload(file, "profile")
+                except Exception as exc:
+                    print(f"[PROFILE PHOTO] Settings upload failed: {exc}")
+                    flash("The profile photo could not be saved. Please try again.", "danger")
+                    return redirect(url_for("admin_settings"))
                 delete_upload(profile_photo)
-                profile_photo = save_upload(file, "profile")
+                profile_photo = new_photo
         if request.form.get("remove_photo") == "1":
             delete_upload(profile_photo)
             profile_photo = None
@@ -2234,7 +2270,7 @@ def admin_profile_photo():
         print(f"[PROFILE PHOTO] Supabase upload failed ({exc.code}): {detail}")
         return jsonify({
             "success": False,
-            "error": "The image could not be saved to cloud storage. Please try again.",
+            "error": "The image could not be saved to Supabase. Please try again.",
         }), 502
     except Exception as exc:
         print(f"[PROFILE PHOTO] Upload failed: {exc}")
