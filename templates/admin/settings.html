@@ -42,16 +42,9 @@
                     <div class="form-group">
                         <label class="form-label" for="theme_name">🎨 Portfolio Layout &amp; Theme Preset</label>
                         <select class="form-input" id="theme_name" name="theme_name" style="font-weight: 600;">
-                            <option value="default" {% if not settings or not settings.theme_name or settings.theme_name == 'default' %}selected{% endif %}>
-                                ✨ Modern Minimalist (Clean Standard Layout)
-                            </option>
-                            <option value="cyberpunk" {% if settings and settings.theme_name == 'cyberpunk' %}selected{% endif %}>
-                                ⚡ Cyberpunk Engineer (Neo-Dark Neon &amp; Code Aesthetics)
-                            </option>
-                            <option value="bento" {% if settings and settings.theme_name == 'bento' %}selected{% endif %}>
-                                🍱 Bento Grid (Glassmorphic Modular Cards Layout)
-                            </option>
+                            <option value="default" selected>Modern Minimalist</option>
                         </select>
+                        <p class="form-hint">The production portfolio currently uses the fully maintained default layout.</p>
                     </div>
                 </div>
 
