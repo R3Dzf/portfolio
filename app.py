@@ -1127,7 +1127,7 @@ def get_current_user_id():
 def login_required(view):
     @functools.wraps(view)
     def wrapped(**kwargs):
-        if not session.get("user_id") and not session.get("admin_logged_in"):
+        if not session.get("user_id"):
             flash("Please log in to access the dashboard.", "warning")
             return redirect(url_for("admin_login"))
         return view(**kwargs)
@@ -1137,9 +1137,9 @@ def login_required(view):
 def superadmin_required(view):
     @functools.wraps(view)
     def wrapped(**kwargs):
-        if not session.get("user_id") or session.get("role") != "admin":
+        if session.get("user_id") != 1 or session.get("role") != "admin":
             flash("Super Admin access required.", "danger")
-            return redirect(url_for("admin_login"))
+            return redirect(url_for("admin_dashboard") if session.get("user_id") else url_for("admin_login"))
         return view(**kwargs)
     return wrapped
 
@@ -1446,6 +1446,7 @@ def auth_verify_otp():
         session["username"] = user["username"]
         session["role"] = user["role"]
         session["admin_logged_in"] = True
+        session.permanent = True
 
         flash(f"🎉 Welcome, {full_name}! Your portfolio is live at /u/{user['username']}", "success")
         return redirect(url_for("admin_dashboard"))
@@ -1500,7 +1501,7 @@ def auth_resend_otp():
 @app.route("/login", methods=["GET", "POST"])
 def admin_login():
     if session.get("user_id"):
-        if session.get("role") == "admin":
+        if session.get("user_id") == 1 and session.get("role") == "admin":
             return redirect(url_for("super_admin_dashboard"))
         return redirect(url_for("admin_dashboard"))
 
@@ -1541,9 +1542,10 @@ def admin_login():
             session["username"] = user["username"]
             session["role"] = user["role"]
             session["admin_logged_in"] = True
+            session.permanent = True
 
             flash(f"Welcome back, {user['username']}!", "success")
-            if user["role"] == "admin":
+            if user["id"] == 1 and user["role"] == "admin":
                 return redirect(url_for("super_admin_dashboard"))
             return redirect(url_for("admin_dashboard"))
         else:
