@@ -62,7 +62,7 @@ def set_security_headers(response):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "img-src 'self' data: https:; "
+        "img-src 'self' data: blob: https:; "
         "style-src 'self' 'unsafe-inline'; "
         "script-src 'self' 'unsafe-inline'; "
         "font-src 'self' data: https:; "
