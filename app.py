@@ -24,7 +24,7 @@ from email.mime.multipart import MIMEMultipart
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, session, g, abort, jsonify,
+    flash, session, g, abort, jsonify, send_from_directory,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -1061,6 +1061,15 @@ def superadmin_required(view):
             return redirect(url_for("admin_login"))
         return view(**kwargs)
     return wrapped
+
+
+# ---------------------------------------------------------------------------
+# Uploaded media
+# ---------------------------------------------------------------------------
+
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 # ---------------------------------------------------------------------------
