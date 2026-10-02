@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ settings.site_title if settings and settings.site_title else ((settings.name if settings and settings.name else 'Ahmed Bosha') ~ ' — Engineering & Software Portfolio') }}{% endblock %}
+{% block title %}{{ settings.site_title if settings and settings.site_title else ((settings.name if settings and settings.name else 'Ahmed Youssef Bosha') ~ ' — Engineering Portfolio') }}{% endblock %}
 
 {% block body %}
 <!-- ===== Navigation ===== -->
@@ -93,10 +93,10 @@
 
         {# Hidden data container for typing phrases #}
         <div id="typingData" style="display:none;"
-             data-phrases="{{ settings.typing_texts if settings and settings.typing_texts else 'Engineering Student,Software Developer,Problem Solver,Automation Enthusiast' }}"></div>
+             data-phrases="{{ settings.typing_texts if settings and settings.typing_texts else 'AI & Machine Learning,Computer Vision,Software Development,Control Systems & Robotics' }}"></div>
 
         <p class="hero__bio reveal" style="--delay: 0.4s;">
-            {{ settings.bio if settings and settings.bio else 'Class of 2029. Passionate about automation, system analysis, and problem-solving. I build tools that turn complex workflows into clean, efficient solutions.' }}
+            {{ settings.bio if settings and settings.bio else 'Computer & Control Engineering student at Tanta University, building practical projects across AI, computer vision, control systems, and software development.' }}
         </p>
 
         <div class="hero__cta reveal" style="--delay: 0.5s;">
@@ -120,7 +120,7 @@
 {% if education_list %}
 <section class="section" id="education">
     <div class="container">
-        <h2 class="section__title reveal">Academic Education</h2>
+        <h2 class="section__title reveal">Education</h2>
         <p class="section__subtitle reveal">Academic foundation, engineering discipline, and specialized coursework</p>
 
         <div class="education-grid">
@@ -153,7 +153,7 @@
 {% if skill_categories %}
 <section class="section" id="skills">
     <div class="container">
-        <h2 class="section__title reveal">Technical Skills &amp; Stack</h2>
+        <h2 class="section__title reveal">Skills &amp; Technologies</h2>
         <p class="section__subtitle reveal">Technologies, frameworks, and engineering tools I leverage</p>
 
         <div class="skill-categories-grid">
@@ -191,8 +191,8 @@
 {% if experiences_list %}
 <section class="section" id="experience">
     <div class="container">
-        <h2 class="section__title reveal">Work Experience &amp; Training</h2>
-        <p class="section__subtitle reveal">Practical research, engineering internships, and system analysis journey</p>
+        <h2 class="section__title reveal">Experience &amp; Training</h2>
+        <p class="section__subtitle reveal">Academic project leadership, practical training, and hands-on development experience</p>
 
         <div class="timeline">
             {% for exp in experiences_list %}
@@ -224,7 +224,7 @@
 {% if services_list %}
 <section class="section" id="services">
     <div class="container">
-        <h2 class="section__title reveal">Technical Focus</h2>
+        <h2 class="section__title reveal">Areas of Focus</h2>
         <p class="section__subtitle reveal">Areas where I apply engineering, software development, and AI in practical projects</p>
 
         <div class="services-grid">
@@ -247,31 +247,37 @@
         <p class="section__subtitle reveal">Selected engineering, AI, and software projects from coursework and independent development</p>
 
         {% if projects %}
-        <!-- Interactive Category Filters (Centered Segmented Bar) -->
+        <!-- Project filters -->
         <div class="project-filters-wrap reveal">
             <div class="project-filters">
                 <button type="button" class="project-filter-btn active" data-filter="all">
                     All Projects <span class="filter-count">{{ projects | length }}</span>
                 </button>
-                {% set tech_set = [] %}
-                {% for p in projects %}
-                    {% for t in p.tech_stack.split(',') %}
-                        {% set clean_t = t.strip() %}
-                        {% if clean_t and clean_t not in tech_set and tech_set | length < 5 %}
-                            {% set _ = tech_set.append(clean_t) %}
-                            <button type="button" class="project-filter-btn" data-filter="{{ clean_t | lower }}">
-                                {{ clean_t }}
-                            </button>
-                        {% endif %}
-                    {% endfor %}
-                {% endfor %}
+                <button type="button" class="project-filter-btn" data-filter="ai">AI &amp; Vision</button>
+                <button type="button" class="project-filter-btn" data-filter="web">Web</button>
+                <button type="button" class="project-filter-btn" data-filter="engineering">Engineering</button>
+                <button type="button" class="project-filter-btn" data-filter="python">Python</button>
             </div>
         </div>
 
         <div class="projects-grid" id="projectsGrid">
             {% for p in projects %}
+            {% set project_blob = ((p.tech_stack or '') ~ ' ' ~ (p.title or '')) | lower %}
+            {% set project_groups = [] %}
+            {% if 'tensorflow' in project_blob or 'opencv' in project_blob or 'machine learning' in project_blob or 'computer vision' in project_blob %}
+                {% set _ = project_groups.append('ai') %}
+            {% endif %}
+            {% if 'flask' in project_blob or 'fastapi' in project_blob or 'javascript' in project_blob or 'html' in project_blob or 'css' in project_blob %}
+                {% set _ = project_groups.append('web') %}
+            {% endif %}
+            {% if 'digital logic' in project_blob or 'computer architecture' in project_blob or 'electronics' in project_blob or 'control' in project_blob or 'sympy' in project_blob %}
+                {% set _ = project_groups.append('engineering') %}
+            {% endif %}
+            {% if 'python' in project_blob or 'fastapi' in project_blob or 'flask' in project_blob %}
+                {% set _ = project_groups.append('python') %}
+            {% endif %}
             <article class="project-card reveal"
-                     data-tags="{{ p.tech_stack | lower }} {{ p.title | lower }}"
+                     data-tags="{{ project_blob }} {{ project_groups | join(' ') }}"
                      style="--delay: {{ loop.index0 * 0.12 }}s;">
                 {# Project Image (if present) #}
                 {% if p.image %}
@@ -534,9 +540,11 @@
 <footer class="footer">
     <div class="container footer__inner">
         <p>{{ master_settings.footer_text if master_settings and master_settings.footer_text else '© 2026 Ahmed Youssef Bosha' }}</p>
+        {% if session.get('user_id') %}
         <p class="footer__credit">
-            <a href="{{ url_for('admin_dashboard') }}" class="footer__admin-link">Admin CMS</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="footer__admin-link">Dashboard</a>
         </p>
+        {% endif %}
     </div>
 </footer>
 
