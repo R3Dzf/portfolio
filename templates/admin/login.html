@@ -60,9 +60,11 @@
                 ⚡ Log In to Dashboard
             </button>
 
+            {% if allow_registration %}
             <div class="auth-card__footer" style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--clr-text-muted);">
-                Don't have an account? <a href="{{ url_for('auth_register') }}" style="color: var(--clr-primary); font-weight: 600;">Create Free Portfolio</a>
+                Need a portfolio account? <a href="{{ url_for('auth_register') }}" style="color: var(--clr-primary); font-weight: 600;">Create one</a>
             </div>
+            {% endif %}
         </form>
 
         <div class="auth-card__footer" style="margin-top: 0.5rem;">
