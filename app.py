@@ -30,7 +30,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import NotFound
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 # ---------------------------------------------------------------------------
 # App configuration
@@ -86,6 +86,18 @@ def set_security_headers(response):
 DATABASE = os.environ.get("DATABASE_PATH") or os.path.join(app.root_path, "portfolio.db")
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or os.path.join(app.root_path, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+# Optional durable persistence through Supabase Storage.
+# The application keeps SQLite locally for fast access, but restores the latest
+# database snapshot on boot and writes a fresh snapshot after every DB commit.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+SUPABASE_APP_KEY = os.environ.get("SUPABASE_APP_KEY", "").strip()
+SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "portfolio-files").strip() or "portfolio-files"
+SUPABASE_DB_OBJECT = "database/portfolio.db"
+CLOUD_STORAGE_ENABLED = bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_APP_KEY)
+DB_SYNC_READY = False
+DB_SYNC_LOCK = threading.Lock()
 
 # Mail configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -175,20 +187,158 @@ def verify_csrf():
     abort(400)
 
 
+def _storage_headers(content_type=None, upsert=False):
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "x-app-api-key": SUPABASE_APP_KEY,
+    }
+    if content_type:
+        headers["Content-Type"] = content_type
+    if upsert:
+        headers["x-upsert"] = "true"
+    return headers
+
+
+def _storage_object_url(remote_path, authenticated=False):
+    prefix = "authenticated/" if authenticated else ""
+    bucket = quote(SUPABASE_BUCKET, safe="")
+    path = quote(remote_path.lstrip("/"), safe="/")
+    return f"{SUPABASE_URL}/storage/v1/object/{prefix}{bucket}/{path}"
+
+
+def storage_download_bytes(remote_path):
+    if not CLOUD_STORAGE_ENABLED:
+        return None
+    req = urllib.request.Request(
+        _storage_object_url(remote_path, authenticated=True),
+        headers=_storage_headers(),
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+
+def storage_upload_bytes(remote_path, payload, content_type="application/octet-stream"):
+    if not CLOUD_STORAGE_ENABLED:
+        return False
+    req = urllib.request.Request(
+        _storage_object_url(remote_path),
+        data=payload,
+        headers=_storage_headers(content_type=content_type, upsert=True),
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        response.read()
+    return True
+
+
+def storage_delete_object(remote_path):
+    if not CLOUD_STORAGE_ENABLED:
+        return False
+    req = urllib.request.Request(
+        _storage_object_url(remote_path),
+        headers=_storage_headers(),
+        method="DELETE",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            response.read()
+        return True
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        raise
+
+
+def restore_database_from_cloud():
+    """Restore the latest SQLite database snapshot before the app starts."""
+    if not CLOUD_STORAGE_ENABLED:
+        return False
+    try:
+        payload = storage_download_bytes(SUPABASE_DB_OBJECT)
+        if not payload:
+            return False
+        os.makedirs(os.path.dirname(os.path.abspath(DATABASE)), exist_ok=True)
+        temp_path = DATABASE + ".cloud-download"
+        with open(temp_path, "wb") as handle:
+            handle.write(payload)
+        os.replace(temp_path, DATABASE)
+        print("[SUPABASE] Restored portfolio database from durable storage.")
+        return True
+    except Exception as exc:
+        print(f"[SUPABASE] Database restore failed: {exc}")
+        return False
+
+
+def sync_database_to_cloud():
+    """Upload the current SQLite database snapshot to durable storage."""
+    if not CLOUD_STORAGE_ENABLED or not DB_SYNC_READY or not os.path.exists(DATABASE):
+        return False
+    with DB_SYNC_LOCK:
+        try:
+            with open(DATABASE, "rb") as handle:
+                payload = handle.read()
+            storage_upload_bytes(
+                SUPABASE_DB_OBJECT,
+                payload,
+                content_type="application/x-sqlite3",
+            )
+            return True
+        except Exception as exc:
+            print(f"[SUPABASE] Database sync failed: {exc}")
+            return False
+
+
+def commit_and_sync(db):
+    db.commit()
+    sync_database_to_cloud()
+
+
 def save_upload(file, prefix="img"):
     """Save an uploaded file and return its filename."""
     ext = file.filename.rsplit(".", 1)[1].lower()
     filename = f"{prefix}_{uuid.uuid4().hex[:8]}.{ext}"
-    file.save(os.path.join(UPLOAD_FOLDER, filename))
+    local_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(local_path)
+
+    if CLOUD_STORAGE_ENABLED:
+        try:
+            with open(local_path, "rb") as handle:
+                storage_upload_bytes(
+                    f"uploads/{filename}",
+                    handle.read(),
+                    content_type=file.mimetype or "application/octet-stream",
+                )
+        except Exception:
+            try:
+                os.remove(local_path)
+            except OSError:
+                pass
+            raise
+
     return filename
 
 
 def delete_upload(filename):
-    """Delete an uploaded file if it exists."""
-    if filename:
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(path):
-            os.remove(path)
+    """Delete an uploaded media file from local cache and durable storage."""
+    if not filename or clean_http_url(filename):
+        return
+
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(path):
+        os.remove(path)
+
+    if CLOUD_STORAGE_ENABLED:
+        try:
+            storage_delete_object(f"uploads/{filename}")
+        except Exception as exc:
+            print(f"[SUPABASE] Media delete failed for {filename}: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +598,7 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
         try:
-            g.db.execute("PRAGMA journal_mode = WAL")
+            g.db.execute("PRAGMA journal_mode = DELETE")
             g.db.execute("PRAGMA busy_timeout = 5000")
         except Exception:
             pass
@@ -664,7 +814,7 @@ def init_db():
             pass
         cursor.execute("DROP TABLE site_settings")
         cursor.execute("ALTER TABLE site_settings_new RENAME TO site_settings")
-        db.commit()
+        commit_and_sync(db)
     
     # Ensure user_id column exists across all data tables
     target_tables = [
@@ -741,7 +891,7 @@ def init_db():
         if not admin_pass:
             print("[SECURITY] ADMIN_PASS is not set; owner login is disabled until configured.")
 
-    db.commit()
+    commit_and_sync(db)
 
     # ---- 1. Seed site settings ----
     if db.execute("SELECT COUNT(*) FROM site_settings").fetchone()[0] == 0:
@@ -769,7 +919,7 @@ def init_db():
                 "https://github.com/R3Dzf",
             ),
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 2. Seed education ----
     if db.execute("SELECT COUNT(*) FROM education").fetchone()[0] == 0:
@@ -787,7 +937,7 @@ def init_db():
                 ),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 3. Seed skills ----
     if db.execute("SELECT COUNT(*) FROM skills").fetchone()[0] == 0:
@@ -833,7 +983,7 @@ def init_db():
                 ("German", "Languages", "A2", "🌍", 33),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 4. Seed experience and training ----
     if db.execute("SELECT COUNT(*) FROM experiences").fetchone()[0] == 0:
@@ -862,7 +1012,7 @@ def init_db():
                 ),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 5. Seed capabilities / services ----
     if db.execute("SELECT COUNT(*) FROM services").fetchone()[0] == 0:
@@ -895,7 +1045,7 @@ def init_db():
                 ),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 6. Seed featured projects ----
     if db.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 0:
@@ -978,7 +1128,7 @@ def init_db():
                 ),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # ---- 7. Seed achievements and certifications ----
     if db.execute("SELECT COUNT(*) FROM achievements").fetchone()[0] == 0:
@@ -1050,7 +1200,7 @@ def init_db():
                 ),
             ],
         )
-        db.commit()
+        commit_and_sync(db)
 
     # Testimonials are intentionally left empty; only real attributed testimonials should be published.
 
@@ -1059,11 +1209,16 @@ def init_db():
 
 
 def ensure_database():
-    """Create or migrate the database on boot, including Gunicorn deployments."""
+    """Restore, create, or migrate the database before serving requests."""
+    global DB_SYNC_READY
+
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     database_dir = os.path.dirname(os.path.abspath(DATABASE))
     if database_dir:
         os.makedirs(database_dir, exist_ok=True)
+
+    # Supabase Storage is the durable source of truth when configured.
+    restore_database_from_cloud()
 
     # init_db() is idempotent: it creates missing tables/columns and seeds
     # defaults only when the corresponding tables are empty.
@@ -1089,6 +1244,9 @@ def ensure_database():
             )
             db.commit()
         db.close()
+
+    DB_SYNC_READY = True
+    sync_database_to_cloud()
 
 
 ensure_database()
@@ -1157,6 +1315,18 @@ def uploaded_file(filename):
     try:
         return send_from_directory(UPLOAD_FOLDER, filename)
     except NotFound:
+        if CLOUD_STORAGE_ENABLED:
+            try:
+                payload = storage_download_bytes(f"uploads/{filename}")
+                if payload:
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                    cached_path = os.path.join(UPLOAD_FOLDER, filename)
+                    with open(cached_path, "wb") as handle:
+                        handle.write(payload)
+                    return send_from_directory(UPLOAD_FOLDER, filename)
+            except Exception as exc:
+                print(f"[SUPABASE] Media restore failed for {filename}: {exc}")
+
         bundled_uploads = os.path.join(app.root_path, "static", "uploads")
         if os.path.abspath(bundled_uploads) != os.path.abspath(UPLOAD_FOLDER):
             return send_from_directory(bundled_uploads, filename)
@@ -1281,7 +1451,7 @@ def contact():
         "INSERT INTO messages (user_id, sender_name, sender_email, message) VALUES (?, ?, ?, ?)",
         (target_user_id, sender_name, sender_email, message),
     )
-    db.commit()
+    commit_and_sync(db)
 
     # Find recipient email for target_user_id
     target_user = db.execute("SELECT email FROM users WHERE id = ?", (target_user_id,)).fetchone()
@@ -1366,7 +1536,7 @@ def auth_register():
                 email,
             ),
         )
-        db.commit()
+        commit_and_sync(db)
 
         # Store pending user info in session for OTP verification step
         session["pending_user_id"] = new_user_id
@@ -1441,7 +1611,7 @@ def auth_verify_otp():
             "UPDATE users SET is_verified = 1, account_status = 'active', verification_code = NULL, code_expires_at = NULL WHERE id = ?",
             (pending_user_id,)
         )
-        db.commit()
+        commit_and_sync(db)
 
         # Clear pending session and start a fresh authenticated session.
         full_name = session.get("pending_full_name", user["username"])
@@ -1487,7 +1657,7 @@ def auth_resend_otp():
         "UPDATE users SET verification_code = ?, code_expires_at = ? WHERE id = ?",
         (otp_code, otp_expires_at, pending_user_id)
     )
-    db.commit()
+    commit_and_sync(db)
 
     full_name = session.get("pending_full_name", user["username"])
     send_otp_email(user["email"], full_name, otp_code)
@@ -1627,7 +1797,7 @@ def super_admin_toggle_status(target_user_id):
         current_status = user_dict.get("account_status", "active")
         new_status = "suspended" if current_status == "active" else "active"
         db.execute("UPDATE users SET account_status = ? WHERE id = ?", (new_status, target_user_id))
-        db.commit()
+        commit_and_sync(db)
         flash(f"User '{user['username']}' status changed to '{new_status}'.", "info")
     return redirect(url_for("super_admin_dashboard"))
 
@@ -1649,7 +1819,7 @@ def super_admin_delete_user(target_user_id):
             except Exception:
                 pass
         db.execute("DELETE FROM users WHERE id = ?", (target_user_id,))
-        db.commit()
+        commit_and_sync(db)
         flash(f"User '{user['username']}' and all their data deleted permanently.", "success")
     return redirect(url_for("super_admin_dashboard"))
 
@@ -1723,7 +1893,7 @@ def super_admin_edit_user(target_user_id):
         else:
             db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_password), target_user_id))
 
-    db.commit()
+    commit_and_sync(db)
     flash(f"✅ User '{new_username}' profile updated successfully (Email: {new_email})!", "success")
     return redirect(url_for("super_admin_dashboard"))
 
@@ -1782,7 +1952,7 @@ def admin_profile():
             # Update username if changed
             if new_username != user["username"]:
                 db.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
-                db.commit()
+                commit_and_sync(db)
                 session["username"] = new_username
 
             # Check email change
@@ -1801,7 +1971,7 @@ def admin_profile():
                        WHERE id = ?""",
                     (new_email, otp_code, otp_exp, user_id),
                 )
-                db.commit()
+                commit_and_sync(db)
                 session["email_change_attempts"] = 0
 
                 send_otp_email(new_email, user["username"], otp_code)
@@ -1830,7 +2000,7 @@ def admin_profile():
                 return redirect(url_for("admin_profile"))
 
             db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new_pass), user_id))
-            db.commit()
+            commit_and_sync(db)
             flash("Password updated successfully!", "success")
             return redirect(url_for("admin_profile"))
 
@@ -1866,7 +2036,7 @@ def auth_verify_email_change():
                    WHERE id = ?""",
                 (user_id,),
             )
-            db.commit()
+            commit_and_sync(db)
             session.pop("email_change_attempts", None)
             flash("Verification code expired. Start the email change again.", "danger")
             return redirect(url_for("admin_profile"))
@@ -1882,7 +2052,7 @@ def auth_verify_email_change():
                        WHERE id = ?""",
                     (user_id,),
                 )
-                db.commit()
+                commit_and_sync(db)
                 session.pop("email_change_attempts", None)
                 flash("Too many invalid attempts. Start the email change again.", "danger")
                 return redirect(url_for("admin_profile"))
@@ -1900,7 +2070,7 @@ def auth_verify_email_change():
                    WHERE id = ?""",
                 (user_id,),
             )
-            db.commit()
+            commit_and_sync(db)
             session.pop("email_change_attempts", None)
             flash("That email address is already in use.", "danger")
             return redirect(url_for("admin_profile"))
@@ -1912,7 +2082,7 @@ def auth_verify_email_change():
             (pending_new_email, user_id),
         )
         db.execute("UPDATE site_settings SET email = ? WHERE user_id = ?", (pending_new_email, user_id))
-        db.commit()
+        commit_and_sync(db)
         session.pop("email_change_attempts", None)
 
         flash(f"Email successfully updated to {pending_new_email}.", "success")
@@ -2011,7 +2181,7 @@ def admin_settings():
                  color_primary, color_accent, color_bg, color_surface, color_text, theme_name),
             )
 
-        db.commit()
+        commit_and_sync(db)
         flash("Portfolio settings and theme updated successfully!", "success")
         return redirect(url_for("admin_settings"))
 
@@ -2051,7 +2221,7 @@ def admin_add_project():
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (user_id, title, description, tech_stack, github_link, live_demo_link, certificate_url, image),
         )
-        db.commit()
+        commit_and_sync(db)
         flash(f'Project "{title}" added!', "success")
         return redirect(url_for("admin_dashboard"))
 
@@ -2097,7 +2267,7 @@ def admin_edit_project(project_id):
             (title, description, tech_stack, github_link, live_demo_link,
              certificate_url, image, project_id, user_id),
         )
-        db.commit()
+        commit_and_sync(db)
         flash(f'Project "{title}" updated!', "success")
         return redirect(url_for("admin_dashboard"))
 
@@ -2114,7 +2284,7 @@ def admin_delete_project(project_id):
         abort(404)
     delete_upload(project["image"])
     db.execute("DELETE FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash(f'Project "{project["title"]}" deleted.', "info")
     return redirect(url_for("admin_dashboard"))
 
@@ -2151,7 +2321,7 @@ def admin_add_skill():
         "INSERT INTO skills (user_id, name, category, level_tag, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
         (user_id, name, category, level_tag, icon, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Skill "{name}" added!', "success")
     return redirect(url_for("admin_skills"))
 
@@ -2175,7 +2345,7 @@ def admin_edit_skill(skill_id):
         "UPDATE skills SET name=?, category=?, level_tag=?, icon=?, sort_order=? WHERE id=? AND user_id=?",
         (name, category, level_tag, icon, sort_order, skill_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Skill "{name}" updated!', "success")
     return redirect(url_for("admin_skills"))
 
@@ -2188,7 +2358,7 @@ def admin_delete_skill(skill_id):
     skill = db.execute("SELECT name FROM skills WHERE id = ? AND user_id = ?", (skill_id, user_id)).fetchone()
     if skill:
         db.execute("DELETE FROM skills WHERE id = ? AND user_id = ?", (skill_id, user_id))
-        db.commit()
+        commit_and_sync(db)
         flash(f'Skill "{skill["name"]}" deleted.', "info")
     return redirect(url_for("admin_skills"))
 
@@ -2228,7 +2398,7 @@ def admin_add_education():
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (user_id, institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash("Education entry added!", "success")
     return redirect(url_for("admin_education"))
 
@@ -2255,7 +2425,7 @@ def admin_edit_education(item_id):
            WHERE id=? AND user_id=?""",
         (institution, degree, field_of_study, start_year, end_year, grade_or_details, sort_order, item_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash("Education entry updated!", "success")
     return redirect(url_for("admin_education"))
 
@@ -2266,7 +2436,7 @@ def admin_delete_education(item_id):
     user_id = session.get("user_id", 1)
     db = get_db()
     db.execute("DELETE FROM education WHERE id = ? AND user_id = ?", (item_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Education entry deleted.", "info")
     return redirect(url_for("admin_education"))
 
@@ -2307,7 +2477,7 @@ def admin_add_experience():
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (user_id, title, company, location, start_date, end_date, description, is_current, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Experience "{title}" added!', "success")
     return redirect(url_for("admin_experience"))
 
@@ -2335,7 +2505,7 @@ def admin_edit_experience(item_id):
            WHERE id=? AND user_id=?""",
         (title, company, location, start_date, end_date, description, is_current, sort_order, item_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Experience "{title}" updated!', "success")
     return redirect(url_for("admin_experience"))
 
@@ -2346,7 +2516,7 @@ def admin_delete_experience(item_id):
     user_id = session.get("user_id", 1)
     db = get_db()
     db.execute("DELETE FROM experiences WHERE id = ? AND user_id = ?", (item_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Experience entry deleted.", "info")
     return redirect(url_for("admin_experience"))
 
@@ -2382,7 +2552,7 @@ def admin_add_service():
         "INSERT INTO services (user_id, title, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
         (user_id, title, description, icon, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Service "{title}" added!', "success")
     return redirect(url_for("admin_services"))
 
@@ -2405,7 +2575,7 @@ def admin_edit_service(item_id):
         "UPDATE services SET title=?, description=?, icon=?, sort_order=? WHERE id=? AND user_id=?",
         (title, description, icon, sort_order, item_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Service "{title}" updated!', "success")
     return redirect(url_for("admin_services"))
 
@@ -2416,7 +2586,7 @@ def admin_delete_service(item_id):
     user_id = session.get("user_id", 1)
     db = get_db()
     db.execute("DELETE FROM services WHERE id = ? AND user_id = ?", (item_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Service deleted.", "info")
     return redirect(url_for("admin_services"))
 
@@ -2463,7 +2633,7 @@ def admin_add_achievement():
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (user_id, title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Achievement "{title}" added!', "success")
     return redirect(url_for("admin_achievements"))
 
@@ -2507,7 +2677,7 @@ def admin_edit_achievement(item_id):
            WHERE id=? AND user_id=?""",
         (title, issuer, date_earned, credential_url, credential_id, image_filename, icon, description, sort_order, item_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Achievement "{title}" updated!', "success")
     return redirect(url_for("admin_achievements"))
 
@@ -2521,7 +2691,7 @@ def admin_delete_achievement(item_id):
     if current and current["image"]:
         delete_upload(current["image"])
     db.execute("DELETE FROM achievements WHERE id = ? AND user_id = ?", (item_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Achievement deleted.", "info")
     return redirect(url_for("admin_achievements"))
 
@@ -2558,7 +2728,7 @@ def admin_add_testimonial():
         "INSERT INTO testimonials (user_id, client_name, client_role, quote, avatar, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
         (user_id, client_name, client_role, quote, avatar, sort_order),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Testimonial from "{client_name}" added!', "success")
     return redirect(url_for("admin_testimonials"))
 
@@ -2582,7 +2752,7 @@ def admin_edit_testimonial(item_id):
         "UPDATE testimonials SET client_name=?, client_role=?, quote=?, avatar=?, sort_order=? WHERE id=? AND user_id=?",
         (client_name, client_role, quote, avatar, sort_order, item_id, user_id),
     )
-    db.commit()
+    commit_and_sync(db)
     flash(f'Testimonial from "{client_name}" updated!', "success")
     return redirect(url_for("admin_testimonials"))
 
@@ -2593,7 +2763,7 @@ def admin_delete_testimonial(item_id):
     user_id = session.get("user_id", 1)
     db = get_db()
     db.execute("DELETE FROM testimonials WHERE id = ? AND user_id = ?", (item_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Testimonial deleted.", "info")
     return redirect(url_for("admin_testimonials"))
 
@@ -2609,7 +2779,7 @@ def admin_messages():
     db = get_db()
     messages = db.execute("SELECT * FROM messages WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
     db.execute("UPDATE messages SET is_read = 1 WHERE user_id = ? AND is_read = 0", (user_id,))
-    db.commit()
+    commit_and_sync(db)
     return render_template("admin/messages.html", messages=messages)
 
 
@@ -2619,7 +2789,7 @@ def admin_delete_message(msg_id):
     user_id = session.get("user_id", 1)
     db = get_db()
     db.execute("DELETE FROM messages WHERE id = ? AND user_id = ?", (msg_id, user_id))
-    db.commit()
+    commit_and_sync(db)
     flash("Message deleted.", "info")
     return redirect(url_for("admin_messages"))
 
@@ -2651,7 +2821,7 @@ def auth_forgot_password():
             expires_str = expires_at.strftime("%Y-%m-%d %H:%M:%S")
 
             db.execute("UPDATE users SET reset_token = ?, reset_token_expires_at = ? WHERE id = ?", (reset_token, expires_str, user["id"]))
-            db.commit()
+            commit_and_sync(db)
 
             reset_url = url_for("auth_reset_password", token=reset_token, _external=True)
             send_password_reset_email(email, user["username"], reset_url)
@@ -2680,7 +2850,7 @@ def auth_reset_password(token):
                     "UPDATE users SET reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?",
                     (user["id"],),
                 )
-                db.commit()
+                commit_and_sync(db)
                 flash("Password reset link has expired. Please request a new one.", "danger")
                 return redirect(url_for("auth_forgot_password"))
         except Exception:
@@ -2699,7 +2869,7 @@ def auth_reset_password(token):
             return render_template("auth/reset_password.html", token=token)
 
         db.execute("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?", (generate_password_hash(new_password), user["id"]))
-        db.commit()
+        commit_and_sync(db)
 
         flash("Your password has been reset successfully! Please log in.", "success")
         return redirect(url_for("admin_login"))
