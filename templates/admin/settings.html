@@ -94,6 +94,7 @@
                         <p class="form-hint photo-preview__name">
                             Choose a photo, position it inside the circle, then save the crop.
                         </p>
+                        <p class="form-hint photo-preview__name" id="profilePhotoStatus" aria-live="polite"></p>
                     </div>
 
                     <input type="file" id="profile_photo" name="profile_photo"
@@ -486,8 +487,15 @@ function applyPreset(primary, accent, bg, surface, text) {
     saveBtn.addEventListener('click', function () {
         if (!image.naturalWidth || !image.naturalHeight) return;
 
+        const status = document.getElementById('profilePhotoStatus');
+        const preview = document.getElementById('profilePhotoPreview');
+
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
+        if (status) {
+            status.textContent = 'Uploading cropped photo...';
+            status.classList.remove('is-error', 'is-success');
+        }
 
         const size = stageSize();
         clampOffsets();
@@ -499,7 +507,7 @@ function applyPreset(primary, accent, bg, surface, text) {
 
         let sourceX = (0 - left) / scale;
         let sourceY = (0 - top) / scale;
-        let sourceSize = size / scale;
+        const sourceSize = size / scale;
 
         sourceX = Math.max(0, Math.min(image.naturalWidth - sourceSize, sourceX));
         sourceY = Math.max(0, Math.min(image.naturalHeight - sourceSize, sourceY));
@@ -519,35 +527,71 @@ function applyPreset(primary, accent, bg, surface, text) {
             0, 0, canvas.width, canvas.height
         );
 
-        canvas.toBlob(function (blob) {
+        canvas.toBlob(async function (blob) {
             if (!blob) {
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Save Photo';
-                alert('Could not crop this image. Please try another photo.');
+                if (status) {
+                    status.textContent = 'Could not crop this image. Please try another photo.';
+                    status.classList.add('is-error');
+                }
                 return;
             }
 
-            const croppedFile = new File(
-                [blob],
-                'profile-photo-' + Date.now() + '.jpg',
-                { type: 'image/jpeg', lastModified: Date.now() }
+            const formData = new FormData();
+            formData.append(
+                'profile_photo',
+                blob,
+                'profile-photo-' + Date.now() + '.jpg'
             );
-            const transfer = new DataTransfer();
-            transfer.items.add(croppedFile);
-            input.files = transfer.files;
 
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-                objectUrl = null;
+            const token =
+                (window.getCsrfToken && window.getCsrfToken()) ||
+                document.querySelector('meta[name="csrf-token"]')?.content ||
+                '';
+
+            try {
+                const response = await fetch('{{ url_for("admin_profile_photo") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (e) {}
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'The photo could not be saved.');
+                }
+
+                if (preview && data.photo_url) {
+                    preview.src = data.photo_url + '?v=' + Date.now();
+                }
+
+                input.value = '';
+                closeModal(false);
+
+                if (status) {
+                    status.textContent = 'Profile photo saved successfully.';
+                    status.classList.remove('is-error');
+                    status.classList.add('is-success');
+                }
+            } catch (error) {
+                if (status) {
+                    status.textContent = error.message || 'The photo could not be saved.';
+                    status.classList.remove('is-success');
+                    status.classList.add('is-error');
+                }
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Photo';
             }
-
-            modal.classList.remove('open');
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-
-            // Saving the crop also saves the profile photo immediately,
-            // matching the previous one-click upload behaviour.
-            input.form.submit();
         }, 'image/jpeg', 0.93);
     });
 })();
