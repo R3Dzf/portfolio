@@ -1408,6 +1408,13 @@ def admin_login():
         return redirect(url_for("admin_dashboard"))
 
     if request.method == "POST":
+        now = time.time()
+        lock_until = float(session.get("_login_lock_until", 0) or 0)
+        if now < lock_until:
+            remaining = max(1, int(lock_until - now))
+            flash(f"Too many failed attempts. Try again in {remaining} seconds.", "warning")
+            return render_template("admin/login.html"), 429
+
         login_input = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
 
@@ -1443,6 +1450,13 @@ def admin_login():
                 return redirect(url_for("super_admin_dashboard"))
             return redirect(url_for("admin_dashboard"))
         else:
+            attempts = int(session.get("_login_failures", 0) or 0) + 1
+            if attempts >= 5:
+                session["_login_failures"] = 0
+                session["_login_lock_until"] = now + 60
+                flash("Too many failed attempts. Try again in 60 seconds.", "warning")
+                return render_template("admin/login.html"), 429
+            session["_login_failures"] = attempts
             flash("Invalid username/email or password.", "danger")
 
     return render_template("admin/login.html")
@@ -2481,9 +2495,19 @@ def admin_delete_message(msg_id):
 @app.route("/forgot-password", methods=["GET", "POST"])
 def auth_forgot_password():
     if request.method == "POST":
+        now = time.time()
+        last_request = float(session.get("_last_password_reset_at", 0) or 0)
+        if now - last_request < 60:
+            flash("Please wait before requesting another password-reset email.", "warning")
+            return redirect(url_for("admin_login"))
+
         email = request.form.get("email", "").strip().lower()
-        db = get_db()
-        user = db.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
+        session["_last_password_reset_at"] = now
+
+        user = None
+        if email and len(email) <= 254 and EMAIL_RE.fullmatch(email):
+            db = get_db()
+            user = db.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email,)).fetchone()
 
         if user:
             reset_token = secrets.token_urlsafe(32)
