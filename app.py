@@ -1,9 +1,8 @@
 """
-Ahmed Bosha — Personal Portfolio & CMS (Complete 9-Component Architecture)
-Aligned with the NTI Portfolio Framework:
-1. Cover / Hero   2. About Me   3. Education   4. Skills & Tech Stack
-5. Work Experience & Training   6. Offered Services   7. Featured Projects
-8. Achievements & Certifications   9. Testimonials   10. Contact & CTA
+Ahmed Youssef Bosha — Personal Portfolio & CMS
+
+A Flask portfolio application with a public profile, project showcase,
+content-management dashboard, authentication, contact messaging, and email workflows.
 """
 
 import os
@@ -19,6 +18,7 @@ import urllib.error
 import datetime
 import re
 import secrets
+import html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -218,7 +218,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 or "ahmedyoussefmansourbosha@gmail.com"
             ).strip("'\" \t\r\n")
             payload = {
-                "sender": {"name": "Ahmed Bosha Portfolio", "email": sender_email_val},
+                "sender": {"name": "Ahmed Youssef Bosha Portfolio", "email": sender_email_val},
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "htmlContent": html_body,
@@ -263,7 +263,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
                 "User-Agent": "Portfolio-App/1.0",
             }
             payload = {
-                "from": "Ahmed Bosha Portfolio <onboarding@resend.dev>",
+                "from": "Ahmed Youssef Bosha Portfolio <onboarding@resend.dev>",
                 "to": [to_email],
                 "subject": subject,
                 "html": html_body,
@@ -287,7 +287,7 @@ def send_custom_email(to_email, subject, html_body, reply_to=None):
     if mail_user and mail_pass:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Ahmed Bosha Portfolio <{mail_user}>"
+        msg["From"] = f"Ahmed Youssef Bosha Portfolio <{mail_user}>"
         msg["To"] = to_email
         if reply_to:
             msg["Reply-To"] = reply_to.strip()
@@ -329,22 +329,24 @@ def send_email_async(to_email, subject, html_body, reply_to=None):
 
 
 def send_otp_email(to_email, full_name, otp_code):
-    """Send beautiful mobile-responsive OTP verification code email."""
-    subject = f"🔐 Your Ahmed Bosha Portfolio Verification Code: {otp_code}"
+    """Send a mobile-responsive OTP verification email."""
+    safe_name = html.escape(str(full_name))
+    safe_code = html.escape(str(otp_code))
+    subject = f"Portfolio verification code: {otp_code}"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 480px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 16px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box;">
         <div style="background: linear-gradient(135deg, #6c63ff 0%, #3b82f6 100%); padding: 24px 16px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Ahmed Youssef Bosha</h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Account Verification System</p>
         </div>
         <div style="padding: 24px 16px; box-sizing: border-box;">
-            <h2 style="color: #ffffff; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Welcome, {full_name}! 👋</h2>
+            <h2 style="color: #ffffff; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Welcome, {safe_name}! 👋</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #a0a0b8; margin-bottom: 20px; text-align: center;">
                 Please use the 6-digit verification code below to activate your portfolio account:
             </p>
             <div style="text-align: center; margin: 20px 0;">
                 <div style="display: inline-block; width: 100%; max-width: 280px; background: #161722; border: 2px solid #6c63ff; border-radius: 14px; padding: 14px 10px; box-shadow: 0 8px 24px rgba(108, 99, 255, 0.25); box-sizing: border-box;">
-                    <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #6c63ff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; display: block; text-align: center;">{otp_code}</span>
+                    <span style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: #6c63ff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; display: block; text-align: center;">{safe_code}</span>
                 </div>
             </div>
             <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; margin: 20px 0; text-align: center;">
@@ -362,26 +364,28 @@ def send_otp_email(to_email, full_name, otp_code):
 
 
 def send_password_reset_email(to_email, username, reset_url):
-    """Send beautiful password reset email."""
-    subject = "🔒 Reset Your Ahmed Bosha Portfolio Password"
+    """Send a password-reset email."""
+    safe_username = html.escape(str(username))
+    safe_reset_url = html.escape(str(reset_url), quote=True)
+    subject = "Portfolio password reset"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
         <div style="background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%); padding: 32px 28px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Ahmed Youssef Bosha</h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">Password Recovery Center</p>
         </div>
         <div style="padding: 32px 28px;">
             <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">Password Reset Request</h2>
             <p style="font-size: 15px; line-height: 1.7; color: #a0a0b8; margin-bottom: 24px;">
-                Hi <strong>{username}</strong>, we received a request to reset your portfolio password. Click the button below to set a new password:
+                Hi <strong>{safe_username}</strong>, we received a request to reset your portfolio password. Click the button below to set a new password:
             </p>
             <div style="text-align: center; margin: 32px 0;">
-                <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35);">
+                <a href="{safe_reset_url}" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35);">
                     🔒 Reset My Password
                 </a>
             </div>
             <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 18px; margin: 24px 0; word-break: break-all; font-size: 12px; color: #8e8ea6;">
-                <strong>Direct Link:</strong> <a href="{reset_url}" style="color: #ef4444; text-decoration: underline;">{reset_url}</a>
+                <strong>Direct Link:</strong> <a href="{safe_reset_url}" style="color: #ef4444; text-decoration: underline;">{safe_reset_url}</a>
             </div>
             <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 12px 16px; text-align: center;">
                 <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 600;">
@@ -395,22 +399,26 @@ def send_password_reset_email(to_email, username, reset_url):
 
 
 def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
-    """Send portfolio contact notification email."""
-    subject = f"🔔 New Portfolio Message from {sender_name}"
+    """Send a portfolio contact notification email."""
+    clean_subject_name = re.sub(r"[\r\n]+", " ", str(sender_name)).strip()[:80]
+    safe_name = html.escape(str(sender_name))
+    safe_email = html.escape(str(sender_email or ""), quote=True)
+    safe_message = html.escape(str(message_content))
+    subject = f"New portfolio message from {clean_subject_name or 'visitor'}"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
         <div style="background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%); padding: 32px 28px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Ahmed <span style="opacity: 0.85;">Bosha</span></h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Ahmed Youssef Bosha</h1>
             <p style="color: rgba(255, 255, 255, 0.9); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">New Contact Form Submission</p>
         </div>
         <div style="padding: 32px 28px;">
             <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700;">📬 You Have a New Message</h2>
             <div style="background: #161722; padding: 18px; border-radius: 12px; margin: 20px 0; border: 1px solid rgba(255, 255, 255, 0.08);">
-                <p style="margin: 0 0 8px 0; font-size: 15px; color: #ffffff;"><strong>From:</strong> {sender_name}</p>
-                <p style="margin: 0; font-size: 15px; color: #10b981;"><strong>Email:</strong> <a href="mailto:{sender_email or ''}" style="color: #10b981; text-decoration: underline;">{sender_email or 'Not provided'}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #ffffff;"><strong>From:</strong> {safe_name}</p>
+                <p style="margin: 0; font-size: 15px; color: #10b981;"><strong>Email:</strong> <a href="mailto:{safe_email}" style="color: #10b981; text-decoration: underline;">{safe_email or 'Not provided'}</a></p>
             </div>
             <div style="background: #08090e; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
-                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{message_content}</p>
+                <p style="margin: 0; white-space: pre-wrap; line-height: 1.7; font-size: 15px; color: #e4e4eb;">{safe_message}</p>
             </div>
         </div>
     </div>
@@ -487,14 +495,22 @@ def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS users (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            username       TEXT UNIQUE NOT NULL,
-            email          TEXT UNIQUE NOT NULL,
-            password_hash  TEXT NOT NULL,
-            role           TEXT DEFAULT 'user',
-            account_status TEXT DEFAULT 'active',
-            plan_tier      TEXT DEFAULT 'free',
-            created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            username                TEXT UNIQUE NOT NULL,
+            email                   TEXT UNIQUE NOT NULL,
+            password_hash           TEXT NOT NULL,
+            role                    TEXT DEFAULT 'user',
+            account_status          TEXT DEFAULT 'active',
+            plan_tier               TEXT DEFAULT 'free',
+            verification_code       TEXT,
+            code_expires_at         TIMESTAMP,
+            reset_token             TEXT,
+            reset_token_expires_at  TIMESTAMP,
+            is_verified             INTEGER DEFAULT 1,
+            pending_email           TEXT,
+            email_change_code       TEXT,
+            email_change_expires_at TIMESTAMP,
+            created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS education (
@@ -658,6 +674,9 @@ def init_db():
         ("reset_token", "TEXT"),
         ("reset_token_expires_at", "TIMESTAMP"),
         ("is_verified", "INTEGER DEFAULT 1"),
+        ("pending_email", "TEXT"),
+        ("email_change_code", "TEXT"),
+        ("email_change_expires_at", "TIMESTAMP"),
     ]
     for col, definition in needed_user_cols:
         if col not in user_cols:
@@ -1360,6 +1379,13 @@ def auth_verify_otp():
         return redirect(url_for("auth_register"))
 
     if request.method == "POST":
+        now = time.time()
+        lock_until = float(session.get("_otp_lock_until", 0) or 0)
+        if now < lock_until:
+            remaining = max(1, int(lock_until - now))
+            flash(f"Too many invalid attempts. Try again in {remaining} seconds.", "warning")
+            return redirect(url_for("auth_verify_otp"))
+
         otp_input = request.form.get("otp", "").strip()
         db = get_db()
         user = db.execute("SELECT * FROM users WHERE id = ?", (pending_user_id,)).fetchone()
@@ -1380,7 +1406,15 @@ def auth_verify_otp():
             except Exception:
                 pass
 
-        if otp_input != user["verification_code"]:
+        expected_code = str(user["verification_code"] or "")
+        if not expected_code or not secrets.compare_digest(otp_input, expected_code):
+            attempts = int(session.get("_otp_attempts", 0) or 0) + 1
+            session["_otp_attempts"] = attempts
+            if attempts >= 5:
+                session["_otp_attempts"] = 0
+                session["_otp_lock_until"] = now + 60
+                flash("Too many invalid attempts. Try again in 60 seconds.", "warning")
+                return redirect(url_for("auth_verify_otp"))
             flash("Invalid verification code. Please try again.", "danger")
             parts = user["email"].split("@")
             masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
@@ -1401,7 +1435,7 @@ def auth_verify_otp():
         session["role"] = user["role"]
         session["admin_logged_in"] = True
 
-        flash(f"🎉 Welcome, {full_name}! Your portfolio is live at /u/{user['username']}", "success")
+        flash(f"🎉 Welcome, {safe_name}! Your portfolio is live at /u/{user['username']}", "success")
         return redirect(url_for("admin_dashboard"))
 
     # GET request - show verify form
@@ -1441,6 +1475,8 @@ def auth_resend_otp():
     full_name = session.get("pending_full_name", user["username"])
     send_otp_email(user["email"], full_name, otp_code)
     session["_last_otp_resend_at"] = now
+    session.pop("_otp_attempts", None)
+    session.pop("_otp_lock_until", None)
 
     parts = user["email"].split("@")
     masked = parts[0][:2] + "***@" + parts[1] if len(parts) == 2 else user["email"]
@@ -1738,15 +1774,18 @@ def admin_profile():
                     flash("Email is already used by another account.", "danger")
                     return redirect(url_for("admin_profile"))
 
-                # Generate 6-digit OTP code for email change verification
+                # Store email-change verification server-side.
                 otp_code = generate_otp()
                 otp_exp = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+                db.execute(
+                    """UPDATE users
+                       SET pending_email = ?, email_change_code = ?, email_change_expires_at = ?
+                       WHERE id = ?""",
+                    (new_email, otp_code, otp_exp, user_id),
+                )
+                db.commit()
+                session["email_change_attempts"] = 0
 
-                session["pending_new_email"] = new_email
-                session["email_change_otp"] = otp_code
-                session["email_change_exp"] = otp_exp
-
-                # Send OTP verification code to NEW email address
                 send_otp_email(new_email, user["username"], otp_code)
 
                 flash(f"A 6-digit verification code was sent to your new email ({new_email}). Please verify to complete email update!", "info")
@@ -1783,58 +1822,82 @@ def admin_profile():
 @app.route("/verify-email-change", methods=["GET", "POST"])
 @login_required
 def auth_verify_email_change():
-    pending_new_email = session.get("pending_new_email")
-    if not pending_new_email:
+    user_id = session.get("user_id")
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user or not user["pending_email"]:
         flash("No email change request pending.", "warning")
         return redirect(url_for("admin_profile"))
 
+    pending_new_email = user["pending_email"]
+
     if request.method == "POST":
         otp_input = request.form.get("otp", "").strip()
-        expected_otp = session.get("email_change_otp")
-        expires_at = session.get("email_change_exp")
+        expected_otp = user["email_change_code"]
+        expires_at = user["email_change_expires_at"]
 
-        if expires_at:
-            try:
-                exp_time = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
-                if datetime.datetime.now() > exp_time:
-                    session.pop("pending_new_email", None)
-                    session.pop("email_change_otp", None)
-                    session.pop("email_change_exp", None)
-                    flash("Verification code expired. Start the email change again.", "danger")
-                    return redirect(url_for("admin_profile"))
-            except (TypeError, ValueError):
-                session.pop("pending_new_email", None)
-                session.pop("email_change_otp", None)
-                session.pop("email_change_exp", None)
-                flash("Verification session is invalid. Start the email change again.", "danger")
-                return redirect(url_for("admin_profile"))
+        try:
+            exp_time = datetime.datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") if expires_at else None
+        except (TypeError, ValueError):
+            exp_time = None
+
+        if not exp_time or datetime.datetime.now() > exp_time:
+            db.execute(
+                """UPDATE users
+                   SET pending_email = NULL, email_change_code = NULL, email_change_expires_at = NULL
+                   WHERE id = ?""",
+                (user_id,),
+            )
+            db.commit()
+            session.pop("email_change_attempts", None)
+            flash("Verification code expired. Start the email change again.", "danger")
+            return redirect(url_for("admin_profile"))
 
         attempts = int(session.get("email_change_attempts", 0) or 0)
         if not expected_otp or not secrets.compare_digest(otp_input, str(expected_otp)):
             attempts += 1
             session["email_change_attempts"] = attempts
             if attempts >= 5:
-                session.pop("pending_new_email", None)
-                session.pop("email_change_otp", None)
-                session.pop("email_change_exp", None)
+                db.execute(
+                    """UPDATE users
+                       SET pending_email = NULL, email_change_code = NULL, email_change_expires_at = NULL
+                       WHERE id = ?""",
+                    (user_id,),
+                )
+                db.commit()
                 session.pop("email_change_attempts", None)
                 flash("Too many invalid attempts. Start the email change again.", "danger")
                 return redirect(url_for("admin_profile"))
             flash("Invalid verification code. Please try again.", "danger")
             return render_template("auth/verify_email_change.html", pending_email=pending_new_email)
 
-        user_id = session.get("user_id")
-        db = get_db()
-        db.execute("UPDATE users SET email = ? WHERE id = ?", (pending_new_email, user_id))
+        existing = db.execute(
+            "SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND id != ?",
+            (pending_new_email, user_id),
+        ).fetchone()
+        if existing:
+            db.execute(
+                """UPDATE users
+                   SET pending_email = NULL, email_change_code = NULL, email_change_expires_at = NULL
+                   WHERE id = ?""",
+                (user_id,),
+            )
+            db.commit()
+            session.pop("email_change_attempts", None)
+            flash("That email address is already in use.", "danger")
+            return redirect(url_for("admin_profile"))
+
+        db.execute(
+            """UPDATE users
+               SET email = ?, pending_email = NULL, email_change_code = NULL, email_change_expires_at = NULL
+               WHERE id = ?""",
+            (pending_new_email, user_id),
+        )
         db.execute("UPDATE site_settings SET email = ? WHERE user_id = ?", (pending_new_email, user_id))
         db.commit()
-
-        session.pop("pending_new_email", None)
-        session.pop("email_change_otp", None)
-        session.pop("email_change_exp", None)
         session.pop("email_change_attempts", None)
 
-        flash(f"🎉 Email successfully updated to {pending_new_email}!", "success")
+        flash(f"Email successfully updated to {pending_new_email}.", "success")
         return redirect(url_for("admin_profile"))
 
     return render_template("auth/verify_email_change.html", pending_email=pending_new_email)
@@ -2589,6 +2652,11 @@ def auth_reset_password(token):
         try:
             exp_time = datetime.datetime.strptime(user["reset_token_expires_at"], "%Y-%m-%d %H:%M:%S")
             if datetime.datetime.now() > exp_time:
+                db.execute(
+                    "UPDATE users SET reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?",
+                    (user["id"],),
+                )
+                db.commit()
                 flash("Password reset link has expired. Please request a new one.", "danger")
                 return redirect(url_for("auth_forgot_password"))
         except Exception:
@@ -2623,11 +2691,11 @@ def admin_test_email():
     settings = get_settings(db=db)
     recipient = settings["email"] if settings and settings["email"] else None
 
-    success, result_msg = send_email_core(
-        sender_name="Portfolio System Test",
-        sender_email="test@portfolio.local",
-        message_content="🎉 Great news! Your email notification forwarding is connected and working 100% with your Portfolio Web App!",
-        recipient_email=recipient,
+    success, result_msg = send_custom_email(
+        recipient,
+        "Portfolio email test",
+        """<p>Your portfolio email configuration is working.</p>
+        <p>This message was sent from the admin dashboard test action.</p>""",
     )
 
     if success:
