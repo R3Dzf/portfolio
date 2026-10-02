@@ -78,7 +78,7 @@
                 <div class="admin-item-card__header">
                     <div class="admin-item-card__info">
                         {% if ach.image %}
-                        <img src="{{ url_for('static', filename='uploads/' + ach.image) }}"
+                        <img src="{{ url_for('uploaded_file', filename=ach.image) }}"
                              alt="{{ ach.title }}" style="width: 54px; height: 54px; border-radius: 10px; object-fit: cover; border: 1px solid var(--clr-border);">
                         {% else %}
                         <div class="admin-item-card__icon">{{ ach.icon or '🏆' }}</div>
@@ -93,7 +93,7 @@
                                 <a href="{{ ach.credential_url }}" target="_blank" rel="noopener" class="link-badge link-badge--blue">↗ Verify Link</a>
                                 {% endif %}
                                 {% if ach.image %}
-                                <a href="{{ url_for('static', filename='uploads/' + ach.image) }}" target="_blank" class="link-badge link-badge--gold">🖼️ Image</a>
+                                <a href="{{ url_for('uploaded_file', filename=ach.image) }}" target="_blank" class="link-badge link-badge--gold">🖼️ Image</a>
                                 {% endif %}
                             </div>
                         </div>
