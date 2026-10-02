@@ -1462,8 +1462,8 @@ def admin_login():
     return render_template("admin/login.html")
 
 
-@app.route("/admin/logout")
-@app.route("/logout")
+@app.route("/admin/logout", methods=["POST"])
+@app.route("/logout", methods=["POST"])
 def admin_logout():
     session.clear()
     flash("Logged out successfully.", "info")
