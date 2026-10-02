@@ -7,27 +7,24 @@
         const modal = document.getElementById("profileCropModal");
         const stage = document.getElementById("profileCropStage");
         const image = document.getElementById("profileCropImage");
-        const zoomInput = document.getElementById("profileCropZoom");
+        const cropBox = document.getElementById("profileCropBox");
         const resetBtn = document.getElementById("profileCropReset");
         const saveBtn = document.getElementById("profileCropSave");
         const status = document.getElementById("profilePhotoStatus");
         const preview = document.getElementById("profilePhotoPreview");
 
-        if (!input || !chooseBtn || !modal || !stage || !image || !zoomInput || !resetBtn || !saveBtn) {
+        if (!input || !chooseBtn || !modal || !stage || !image || !cropBox || !resetBtn || !saveBtn) {
             return;
         }
 
         const closeButtons = modal.querySelectorAll("[data-crop-close]");
         const uploadUrl = input.dataset.uploadUrl || "/admin/profile-photo";
 
-        let objectUrl = null;
-        let minScale = 1;
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
-        let dragging = false;
-        let lastX = 0;
-        let lastY = 0;
+        let cropX = 0;
+        let cropY = 0;
+        let cropSize = 160;
+        let imageBounds = null;
+        let interaction = null;
 
         function setStatus(message, type) {
             if (!status) return;
@@ -35,51 +32,6 @@
             status.classList.remove("is-error", "is-success");
             if (type === "error") status.classList.add("is-error");
             if (type === "success") status.classList.add("is-success");
-        }
-
-        function stageSize() {
-            return Math.max(1, stage.getBoundingClientRect().width);
-        }
-
-        function clampOffsets() {
-            if (!image.naturalWidth || !image.naturalHeight) return;
-
-            const size = stageSize();
-            const scaledWidth = image.naturalWidth * scale;
-            const scaledHeight = image.naturalHeight * scale;
-            const limitX = Math.max(0, (scaledWidth - size) / 2);
-            const limitY = Math.max(0, (scaledHeight - size) / 2);
-
-            offsetX = Math.min(limitX, Math.max(-limitX, offsetX));
-            offsetY = Math.min(limitY, Math.max(-limitY, offsetY));
-        }
-
-        function renderCrop() {
-            clampOffsets();
-            image.style.transform =
-                "translate(-50%, -50%) translate(" +
-                offsetX +
-                "px, " +
-                offsetY +
-                "px) scale(" +
-                scale +
-                ")";
-        }
-
-        function resetCrop() {
-            if (!image.naturalWidth || !image.naturalHeight) return;
-
-            const size = stageSize();
-            minScale = Math.max(
-                size / image.naturalWidth,
-                size / image.naturalHeight
-            );
-
-            scale = minScale;
-            offsetX = 0;
-            offsetY = 0;
-            zoomInput.value = "1";
-            renderCrop();
         }
 
         function showModal() {
@@ -92,41 +44,143 @@
             modal.classList.remove("open");
             modal.setAttribute("aria-hidden", "true");
             document.body.style.overflow = "";
-            dragging = false;
-            stage.classList.remove("is-dragging");
-
+            interaction = null;
             if (clearFile) input.value = "";
-
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-                objectUrl = null;
-            }
-
             image.removeAttribute("src");
         }
 
-        function openCropper(file) {
-            setStatus("", "");
-            showModal();
+        function readImage(file) {
+            const reader = new FileReader();
+            reader.onload = function () {
+                image.onload = function () {
+                    showModal();
+                    requestAnimationFrame(resetCrop);
+                };
+                image.onerror = function () {
+                    closeModal(true);
+                    setStatus("This image could not be opened. Try a JPG, PNG, or WEBP file.", "error");
+                };
+                image.src = reader.result;
+            };
+            reader.onerror = function () {
+                setStatus("This image could not be read.", "error");
+            };
+            reader.readAsDataURL(file);
+        }
 
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
+        function getImageBounds() {
+            const stageRect = stage.getBoundingClientRect();
+            const imageRect = image.getBoundingClientRect();
+
+            return {
+                left: imageRect.left - stageRect.left,
+                top: imageRect.top - stageRect.top,
+                width: imageRect.width,
+                height: imageRect.height,
+                right: imageRect.right - stageRect.left,
+                bottom: imageRect.bottom - stageRect.top
+            };
+        }
+
+        function renderCropBox() {
+            cropBox.style.left = cropX + "px";
+            cropBox.style.top = cropY + "px";
+            cropBox.style.width = cropSize + "px";
+            cropBox.style.height = cropSize + "px";
+        }
+
+        function resetCrop() {
+            if (!image.naturalWidth || !image.naturalHeight) return;
+
+            imageBounds = getImageBounds();
+            cropSize = Math.max(
+                90,
+                Math.min(imageBounds.width, imageBounds.height) * 0.82
+            );
+            cropX = imageBounds.left + (imageBounds.width - cropSize) / 2;
+            cropY = imageBounds.top + (imageBounds.height - cropSize) / 2;
+            renderCropBox();
+        }
+
+        function clampMove(x, y) {
+            if (!imageBounds) return { x: cropX, y: cropY };
+            return {
+                x: Math.min(
+                    imageBounds.right - cropSize,
+                    Math.max(imageBounds.left, x)
+                ),
+                y: Math.min(
+                    imageBounds.bottom - cropSize,
+                    Math.max(imageBounds.top, y)
+                )
+            };
+        }
+
+        function resizeFromHandle(handle, pointerX, pointerY) {
+            if (!imageBounds || !interaction) return;
+
+            const minSize = Math.min(
+                90,
+                imageBounds.width,
+                imageBounds.height
+            );
+
+            let anchorX;
+            let anchorY;
+            let rawSize;
+            let maxSize;
+            let newX;
+            let newY;
+
+            if (handle === "nw") {
+                anchorX = interaction.startX + interaction.startSize;
+                anchorY = interaction.startY + interaction.startSize;
+                rawSize = Math.max(anchorX - pointerX, anchorY - pointerY);
+                maxSize = Math.min(
+                    anchorX - imageBounds.left,
+                    anchorY - imageBounds.top
+                );
+                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
+                newX = anchorX - cropSize;
+                newY = anchorY - cropSize;
+            } else if (handle === "ne") {
+                anchorX = interaction.startX;
+                anchorY = interaction.startY + interaction.startSize;
+                rawSize = Math.max(pointerX - anchorX, anchorY - pointerY);
+                maxSize = Math.min(
+                    imageBounds.right - anchorX,
+                    anchorY - imageBounds.top
+                );
+                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
+                newX = anchorX;
+                newY = anchorY - cropSize;
+            } else if (handle === "sw") {
+                anchorX = interaction.startX + interaction.startSize;
+                anchorY = interaction.startY;
+                rawSize = Math.max(anchorX - pointerX, pointerY - anchorY);
+                maxSize = Math.min(
+                    anchorX - imageBounds.left,
+                    imageBounds.bottom - anchorY
+                );
+                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
+                newX = anchorX - cropSize;
+                newY = anchorY;
+            } else {
+                anchorX = interaction.startX;
+                anchorY = interaction.startY;
+                rawSize = Math.max(pointerX - anchorX, pointerY - anchorY);
+                maxSize = Math.min(
+                    imageBounds.right - anchorX,
+                    imageBounds.bottom - anchorY
+                );
+                cropSize = Math.min(maxSize, Math.max(minSize, rawSize));
+                newX = anchorX;
+                newY = anchorY;
             }
 
-            objectUrl = URL.createObjectURL(file);
-
-            image.onload = function () {
-                requestAnimationFrame(function () {
-                    resetCrop();
-                });
-            };
-
-            image.onerror = function () {
-                closeModal(true);
-                setStatus("This image could not be opened. Try a JPG, PNG, or WEBP file.", "error");
-            };
-
-            image.src = objectUrl;
+            cropX = newX;
+            cropY = newY;
+            renderCropBox();
         }
 
         chooseBtn.addEventListener("click", function () {
@@ -145,58 +199,66 @@
                 return;
             }
 
-            openCropper(file);
+            setStatus("", "");
+            readImage(file);
         });
 
-        zoomInput.addEventListener("input", function () {
-            const previousScale = scale;
-            scale = minScale * Number(zoomInput.value || 1);
+        cropBox.addEventListener("pointerdown", function (event) {
+            if (!imageBounds) return;
 
-            if (previousScale > 0) {
-                const ratio = scale / previousScale;
-                offsetX *= ratio;
-                offsetY *= ratio;
-            }
+            event.preventDefault();
+            const stageRect = stage.getBoundingClientRect();
+            const handleEl = event.target.closest("[data-handle]");
+            const handle = handleEl ? handleEl.dataset.handle : null;
 
-            renderCrop();
-        });
-
-        resetBtn.addEventListener("click", resetCrop);
-
-        stage.addEventListener("pointerdown", function (event) {
-            if (!image.src) return;
-
-            dragging = true;
-            lastX = event.clientX;
-            lastY = event.clientY;
-            stage.classList.add("is-dragging");
+            interaction = {
+                mode: handle ? "resize" : "move",
+                handle: handle,
+                pointerStartX: event.clientX - stageRect.left,
+                pointerStartY: event.clientY - stageRect.top,
+                startX: cropX,
+                startY: cropY,
+                startSize: cropSize
+            };
 
             try {
-                stage.setPointerCapture(event.pointerId);
+                cropBox.setPointerCapture(event.pointerId);
             } catch (e) {}
         });
 
-        stage.addEventListener("pointermove", function (event) {
-            if (!dragging) return;
+        cropBox.addEventListener("pointermove", function (event) {
+            if (!interaction) return;
 
-            offsetX += event.clientX - lastX;
-            offsetY += event.clientY - lastY;
-            lastX = event.clientX;
-            lastY = event.clientY;
-            renderCrop();
+            const stageRect = stage.getBoundingClientRect();
+            const pointerX = event.clientX - stageRect.left;
+            const pointerY = event.clientY - stageRect.top;
+
+            if (interaction.mode === "move") {
+                const dx = pointerX - interaction.pointerStartX;
+                const dy = pointerY - interaction.pointerStartY;
+                const next = clampMove(
+                    interaction.startX + dx,
+                    interaction.startY + dy
+                );
+                cropX = next.x;
+                cropY = next.y;
+                renderCropBox();
+            } else {
+                resizeFromHandle(interaction.handle, pointerX, pointerY);
+            }
         });
 
-        function endDrag(event) {
-            dragging = false;
-            stage.classList.remove("is-dragging");
-
+        function endInteraction(event) {
+            interaction = null;
             try {
-                stage.releasePointerCapture(event.pointerId);
+                cropBox.releasePointerCapture(event.pointerId);
             } catch (e) {}
         }
 
-        stage.addEventListener("pointerup", endDrag);
-        stage.addEventListener("pointercancel", endDrag);
+        cropBox.addEventListener("pointerup", endInteraction);
+        cropBox.addEventListener("pointercancel", endInteraction);
+
+        resetBtn.addEventListener("click", resetCrop);
 
         closeButtons.forEach(function (button) {
             button.addEventListener("click", function () {
@@ -212,12 +274,12 @@
 
         window.addEventListener("resize", function () {
             if (modal.classList.contains("open") && image.naturalWidth) {
-                resetCrop();
+                requestAnimationFrame(resetCrop);
             }
         });
 
         saveBtn.addEventListener("click", function () {
-            if (!image.naturalWidth || !image.naturalHeight) {
+            if (!image.naturalWidth || !image.naturalHeight || !imageBounds) {
                 setStatus("The image is still loading. Try again in a moment.", "error");
                 return;
             }
@@ -226,26 +288,20 @@
             saveBtn.textContent = "Saving...";
             setStatus("Uploading cropped photo...", "");
 
-            const size = stageSize();
-            clampOffsets();
+            const stageRect = stage.getBoundingClientRect();
+            const imageRect = image.getBoundingClientRect();
+            const cropRect = cropBox.getBoundingClientRect();
 
-            const displayedWidth = image.naturalWidth * scale;
-            const displayedHeight = image.naturalHeight * scale;
-            const left = size / 2 + offsetX - displayedWidth / 2;
-            const top = size / 2 + offsetY - displayedHeight / 2;
-
-            let sourceX = -left / scale;
-            let sourceY = -top / scale;
-            const sourceSize = size / scale;
-
-            sourceX = Math.max(
-                0,
-                Math.min(image.naturalWidth - sourceSize, sourceX)
-            );
-            sourceY = Math.max(
-                0,
-                Math.min(image.naturalHeight - sourceSize, sourceY)
-            );
+            const sourceX =
+                (cropRect.left - imageRect.left) *
+                (image.naturalWidth / imageRect.width);
+            const sourceY =
+                (cropRect.top - imageRect.top) *
+                (image.naturalHeight / imageRect.height);
+            const sourceWidth =
+                cropRect.width * (image.naturalWidth / imageRect.width);
+            const sourceHeight =
+                cropRect.height * (image.naturalHeight / imageRect.height);
 
             const canvas = document.createElement("canvas");
             canvas.width = 800;
@@ -262,17 +318,17 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = "high";
             ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, 800, 800);
             ctx.drawImage(
                 image,
                 sourceX,
                 sourceY,
-                sourceSize,
-                sourceSize,
+                sourceWidth,
+                sourceHeight,
                 0,
                 0,
-                canvas.width,
-                canvas.height
+                800,
+                800
             );
 
             canvas.toBlob(
