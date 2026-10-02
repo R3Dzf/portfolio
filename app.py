@@ -18,7 +18,7 @@ import urllib.error
 import datetime
 import re
 import secrets
-import html
+import html as html_lib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -330,8 +330,8 @@ def send_email_async(to_email, subject, html_body, reply_to=None):
 
 def send_otp_email(to_email, full_name, otp_code):
     """Send a mobile-responsive OTP verification email."""
-    safe_name = html.escape(str(full_name))
-    safe_code = html.escape(str(otp_code))
+    safe_name = html_lib.escape(str(full_name))
+    safe_code = html_lib.escape(str(otp_code))
     subject = f"Portfolio verification code: {otp_code}"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 480px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 16px; overflow: hidden; border: 1px solid rgba(108, 99, 255, 0.25); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); box-sizing: border-box;">
@@ -365,8 +365,8 @@ def send_otp_email(to_email, full_name, otp_code):
 
 def send_password_reset_email(to_email, username, reset_url):
     """Send a password-reset email."""
-    safe_username = html.escape(str(username))
-    safe_reset_url = html.escape(str(reset_url), quote=True)
+    safe_username = html_lib.escape(str(username))
+    safe_reset_url = html_lib.escape(str(reset_url), quote=True)
     subject = "Portfolio password reset"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
@@ -401,9 +401,9 @@ def send_password_reset_email(to_email, username, reset_url):
 def notify_new_message(sender_name, sender_email, message_content, recipient_email=None):
     """Send a portfolio contact notification email."""
     clean_subject_name = re.sub(r"[\r\n]+", " ", str(sender_name)).strip()[:80]
-    safe_name = html.escape(str(sender_name))
-    safe_email = html.escape(str(sender_email or ""), quote=True)
-    safe_message = html.escape(str(message_content))
+    safe_name = html_lib.escape(str(sender_name))
+    safe_email = html_lib.escape(str(sender_email or ""), quote=True)
+    safe_message = html_lib.escape(str(message_content))
     subject = f"New portfolio message from {clean_subject_name or 'visitor'}"
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; background: #0d0e15; color: #f0f0f8; border-radius: 18px; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.25); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);">
