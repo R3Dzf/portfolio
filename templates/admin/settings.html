@@ -68,7 +68,7 @@
                     <label class="form-label">Profile Photo</label>
                     {% if settings and settings.profile_photo %}
                     <div class="photo-preview">
-                        <img src="{{ url_for('uploaded_file', filename=settings.profile_photo) }}"
+                        <img src="{{ media_url(settings.profile_photo) }}"
                              alt="Current profile photo" class="photo-preview__img">
                         <div class="photo-preview__actions">
                             <label class="btn btn--sm btn--outline" for="profile_photo">Change Photo</label>
