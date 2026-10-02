@@ -2468,7 +2468,7 @@ def auth_reset_password(token):
 def admin_test_email():
     """Send a diagnostic test email to verify credentials."""
     db = get_db()
-    settings = get_settings(db)
+    settings = get_settings(db=db)
     recipient = settings["email"] if settings and settings["email"] else None
 
     success, result_msg = send_email_core(
