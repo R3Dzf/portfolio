@@ -21,9 +21,9 @@
                 <a href="{% if session.get('username') and session.get('username') != 'admin' %}{{ url_for('user_portfolio', username=session.get('username')) }}{% else %}{{ url_for('index') }}{% endif %}" target="_blank" rel="noopener" class="btn btn--sm btn--dark" title="View Public Portfolio">
                     ↗ View My Site
                 </a>
-                <a href="{{ url_for('admin_logout') }}" class="btn btn--sm btn--danger" title="Logout">
-                    Logout
-                </a>
+                <form method="POST" action="{{ url_for('admin_logout') }}" style="display:inline;">
+                    <button type="submit" class="btn btn--sm btn--danger" title="Logout">Logout</button>
+                </form>
             </div>
         </div>
 
