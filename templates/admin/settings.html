@@ -112,7 +112,7 @@
                         <div class="profile-crop-modal__header">
                             <div>
                                 <h3 id="profileCropTitle">Crop Profile Photo</h3>
-                                <p>Move and resize the square over the original photo. Your profile will still display as a circle.</p>
+                                <p>Move and resize the crop box. The circle shows exactly how the profile photo will look.</p>
                             </div>
                             <button type="button" class="profile-crop-modal__close" data-crop-close aria-label="Close">&times;</button>
                         </div>
@@ -121,15 +121,21 @@
                             <div class="profile-crop-stage" id="profileCropStage">
                                 <img id="profileCropImage" alt="Profile crop preview" draggable="false">
                                 <div class="profile-crop-box" id="profileCropBox" aria-label="Crop area">
+                                    <div class="profile-crop-circle" aria-hidden="true"></div>
+                                    <div class="profile-crop-center" aria-hidden="true"></div>
                                     <span class="profile-crop-handle profile-crop-handle--nw" data-handle="nw"></span>
+                                    <span class="profile-crop-handle profile-crop-handle--n" data-handle="n"></span>
                                     <span class="profile-crop-handle profile-crop-handle--ne" data-handle="ne"></span>
-                                    <span class="profile-crop-handle profile-crop-handle--sw" data-handle="sw"></span>
+                                    <span class="profile-crop-handle profile-crop-handle--e" data-handle="e"></span>
                                     <span class="profile-crop-handle profile-crop-handle--se" data-handle="se"></span>
+                                    <span class="profile-crop-handle profile-crop-handle--s" data-handle="s"></span>
+                                    <span class="profile-crop-handle profile-crop-handle--sw" data-handle="sw"></span>
+                                    <span class="profile-crop-handle profile-crop-handle--w" data-handle="w"></span>
                                 </div>
                             </div>
 
                             <div class="profile-crop-controls profile-crop-controls--simple">
-                                <span>Drag the square to move it. Drag a corner to resize it.</span>
+                                <span>Move the crop box, resize it from any handle, and keep the face inside the circle.</span>
                                 <button type="button" class="btn btn--sm btn--outline" id="profileCropReset">Reset Crop</button>
                             </div>
                         </div>
