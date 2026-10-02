@@ -29,6 +29,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.exceptions import NotFound
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
@@ -1069,7 +1070,13 @@ def superadmin_required(view):
 
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    try:
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    except NotFound:
+        bundled_uploads = os.path.join(app.root_path, "static", "uploads")
+        if os.path.abspath(bundled_uploads) != os.path.abspath(UPLOAD_FOLDER):
+            return send_from_directory(bundled_uploads, filename)
+        raise
 
 
 # ---------------------------------------------------------------------------
