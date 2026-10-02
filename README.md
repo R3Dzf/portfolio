@@ -241,6 +241,15 @@ ADMIN_PASS=replace-with-a-strong-password
 ALLOW_REGISTRATION=0
 ```
 
+Optional persistent-storage paths for deployments with a mounted disk:
+
+```env
+DATABASE_PATH=/var/data/portfolio.db
+UPLOAD_FOLDER=/var/data/uploads
+```
+
+Without persistent storage, SQLite data and uploaded files can be lost when an ephemeral hosting service restarts or redeploys the application.
+
 Optional email configuration:
 
 ```env
